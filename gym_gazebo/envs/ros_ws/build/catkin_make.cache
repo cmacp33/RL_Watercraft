@@ -1,0 +1,2 @@
+cartpole_gazebo:linefollow_ros:pool_gazebo/boat_gazebo:pool_gazebo/usv_gazebo_plugins:pool_gazebo/wave_gazebo_plugins
+-DCATKIN_DEVEL_PREFIX=/home/fizzer/enph353_gym-gazebo-noetic/gym_gazebo/envs/ros_ws/devel -DCMAKE_INSTALL_PREFIX=/home/fizzer/enph353_gym-gazebo-noetic/gym_gazebo/envs/ros_ws/install -G Unix Makefiles

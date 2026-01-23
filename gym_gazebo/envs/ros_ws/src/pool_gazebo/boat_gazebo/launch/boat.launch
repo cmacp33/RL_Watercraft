@@ -1,0 +1,31 @@
+<launch>
+
+  <env name="GAZEBO_MODEL_PATH" value="$(find boat_gazebo)/models"/>
+  <env name="GAZEBO_PLUGIN_PATH" value="$(find boat_gazebo)/devel/lib"/>
+
+  <arg name="x" default="0.0"/>
+  <arg name="y" default="0.0"/>
+  <arg name="z" default="0.1"/>
+  <arg name="model" default="$(find boat_gazebo)/urdf/boat.xacro"/>
+  <arg name ="camera" default="$(find boat_gazebo)/urdf/camera.xacro"/>
+  <arg name="world_file" default="$(find boat_gazebo)/worlds/boat.world"/>
+
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(arg world_file)"/>
+    <arg name="verbose" value="false"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="true"/>
+  </include>
+
+  <param name="robot_description" command="$(find xacro)/xacro $(arg model)"/>
+  <node name="spawn_boat" pkg="gazebo_ros" type="spawn_model"
+        args="-param robot_description -urdf -model boat -x $(arg x) -y $(arg y) -z $(arg z)"
+        respawn="false" output="screen"/>
+
+  <param name="camera_description" command="$(find xacro)/xacro $(arg camera)"/>
+  <node name="spawn_camera" pkg="gazebo_ros" type="spawn_model"
+      args="-param camera_description -urdf -model floating_camera -x 0 -y 0 -z 30 -R 0 -P 1.5708 -Y 0"
+      respawn="false" output="screen"/>
+
+</launch>
