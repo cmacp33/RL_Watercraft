@@ -10,8 +10,8 @@ gym_gazebo/envs/__init__.py
 gym_gazebo/envs/gazebo_env.py
 gym_gazebo/envs/real_env.py
 gym_gazebo/envs/real_env_ros2.py
-gym_gazebo/envs/gazebo_cartpole/__init__.py
-gym_gazebo/envs/gazebo_cartpole/gazebo_cartpole_v0.py
+gym_gazebo/envs/pool_gym_env/__init__.py
+gym_gazebo/envs/pool_gym_env/pool_gym_v0.py
 gym_gazebo/utils/__init__.py
 gym_gazebo/utils/atomic_write.py
 gym_gazebo/utils/closer.py

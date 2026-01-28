@@ -7,9 +7,7 @@
 # new environment variables
 
 # modified environment variables
-export CMAKE_PREFIX_PATH="/home/fizzer/enph353_gym-gazebo-noetic/gym_gazebo/envs/ros_ws/devel:$CMAKE_PREFIX_PATH"
-export LD_LIBRARY_PATH="/home/fizzer/enph353_gym-gazebo-noetic/gym_gazebo/envs/ros_ws/devel/lib:$LD_LIBRARY_PATH"
-export PKG_CONFIG_PATH="/home/fizzer/enph353_gym-gazebo-noetic/gym_gazebo/envs/ros_ws/devel/lib/pkgconfig:$PKG_CONFIG_PATH"
-export PWD='/home/fizzer/enph353_gym-gazebo-noetic/gym_gazebo/envs/ros_ws/build'
-export ROSLISP_PACKAGE_DIRECTORIES='/home/fizzer/enph353_gym-gazebo-noetic/gym_gazebo/envs/ros_ws/devel/share/common-lisp'
-export ROS_PACKAGE_PATH="/home/fizzer/enph353_gym-gazebo-noetic/gym_gazebo/envs/ros_ws/src:$ROS_PACKAGE_PATH"
+export LD_LIBRARY_PATH='/opt/ros/noetic/lib'
+export PKG_CONFIG_PATH='/opt/ros/noetic/lib/pkgconfig'
+export PWD='/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build'
+export ROS_PACKAGE_PATH='/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src:/opt/ros/noetic/share'

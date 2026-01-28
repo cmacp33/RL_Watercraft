@@ -1,8 +1,8 @@
-prefix=/home/fizzer/enph353_gym-gazebo-noetic/gym_gazebo/envs/ros_ws/devel
+prefix=/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel
 
 Name: wave_gazebo_plugins
 Description: Description of wave_gazebo_plugins
 Version: 1.3.0
-Cflags: -I/home/fizzer/enph353_gym-gazebo-noetic/gym_gazebo/envs/ros_ws/src/pool_gazebo/wave_gazebo_plugins/include
+Cflags: -I/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src/wave_gazebo_plugins/include
 Libs: -L${prefix}/lib -lHydrodynamics -lWavefieldModelPlugin -lWavefieldVisualPlugin -lwavegauge_plugin
 Requires: gazebo_ros

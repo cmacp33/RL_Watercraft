@@ -1,4 +1,4 @@
-prefix=/home/fizzer/enph353_gym-gazebo-noetic/gym_gazebo/envs/ros_ws/devel
+prefix=/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel
 
 Name: boat_gazebo
 Description: Description of boat_gazebo
