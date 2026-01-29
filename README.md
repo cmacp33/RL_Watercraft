@@ -1,43 +1,29 @@
-# An OpenAI gym extension for using Gazebo known as `gym-gazebo`
+## 2606 RL-Underactuated Watercraft
 
-**`gym-gazebo` is a complex piece of software for roboticists that puts together simulation tools, robot middlewares (ROS, ROS 2), machine learning and reinforcement learning techniques. All together to create an environment whereto benchmark and develop behaviors with robots. Setting up `gym-gazebo` appropriately requires relevant familiarity with these tools.**
+### Training/RL 
+All training/RL stuff is in:
+```
+training_scripts/
+```
+(will organize more later)
 
-## Installation
-Refer to [INSTALL.md](INSTALL.md)
-
-## Usage
-
-### Build and install gym-gazebo
-
-In the root directory of the repository:
-
-```bash
-sudo pip install -e .
+### Gym Environment 
+The gym env is defined in:
+```
+gym_gazebo/envs/pool_gym_env/pool_gym_v0.py
 ```
 
-### Running an environment
-
-To run the cartpole environment go to directory where gym-gazebo is contained, then run:
+### Gazebo Environment
+All gazebo stuff (worlds,urdfs,models,launch files,etc) is in:
 ```
-source enph353_gym-gazebo/gym_gazebo/envs/ros_ws/devel/setup.bash
-cd enph353_gym-gazebo/examples/boat_training_ex
-gazebo_pool_v0_test.py
+gym_gazebo/envs/ros_ws/src/boat_gazebo/
 ```
 
-To run the robot environment go to directory where gym-gazebo is contained, then run:
+### Hydrodynamics Plugins
+The hydrodynamics plugins were cloned from https://github.com/osrf/vrx/tree/gazebo_classic and can be found in:
 ```
-source enph353_gym-gazebo/gym_gazebo/envs/ros_ws/devel/setup.bash
-cd enph353_gym-gazebo/examples/adeept_awr
-python enph_ai_adeept_awr_empty_qlearn.py
+gym_gazebo/env/ros_ws/src/(wave_gazebo_plugins & usv_gazebo_plugins)
 ```
 
 
-### Killing background processes
 
-Sometimes, after ending or killing the simulation `gzserver` and `rosmaster` stay on the background, make sure you end them before starting new tests.
-
-We recommend creating an alias to kill those processes.
-
-```bash
-echo "alias killgazebogym='killall -9 rosout roslaunch rosmaster gzserver nodelet robot_state_publisher gzclient'" >> ~/.bashrc
-```
