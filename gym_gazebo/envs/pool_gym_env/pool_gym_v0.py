@@ -40,7 +40,7 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		aruco_params = aruco.DetectorParameters()
 		self.detector = aruco.ArucoDetector(aruco_dict, aruco_params)
 		
-		# idk
+		# misc
 		self._seed()
 		self.bridge = CvBridge()
 
@@ -53,6 +53,9 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		# position target (x y yaw x' y' yaw')
 		self.target = np.array([5, 5, 0, 0, 0, 0])
 		self.tol = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+
+		# timeout counter
+		self.count = 0
 
 	def get_state(self, prev_state, corners):
 
@@ -72,28 +75,53 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 			return [x,y,a,0,0,0]
 		
 		dt =  (self.time - self.prev_time).to_sec()
-		x_vel = (x - prev_state[0]) / dt
-		y_vel = (y - prev_state[1]) / dt
-		a_vel = (a - prev_state[2]) / dt
+		if(dt == 0):
+			x_vel = prev_state[3]
+			y_vel = prev_state[4]
+			a_vel = prev_state[5]
+		else:
+			x_vel = (x - prev_state[0]) / dt
+			y_vel = (y - prev_state[1]) / dt
+			a_vel = (a - prev_state[2]) / dt
 
 		# return state
 		return [x,y,a,x_vel,y_vel,a_vel]
 
 
-	def done_check(self, state): #task
-		# if (abs(state - self.target) < self.tol):
-		# 	return True
-		# else:
-		return False
+	def done_check(self, state, prev_state):
+
+		# TEMP IMPLEMENTATION FOR TESTING XENTROPY
+
+		done = False
+		if ((abs(750 - state[0]) < 100 and abs(750 - state[1]) < 100) or self.count > 100):
+			done = True
+			print("DONE DONE DONE DONE DONE DONE DONE")
+
+		return done
 		
-	def compute_reward(self, state, prev_state): #task
+	def compute_reward(self, state, prev_state):
+
+		# TEMP IMPLEMENTATION FOR TESTING XENTROPY
+
 		reward = 0
-		# for i in range(5):
-		# 	if (abs(self.target[i]-state[i]) < self.tol[i]):
-		# 		reward += 2
-		# 	elif (abs(self.target[i]-state[i]) < abs(self.target[i]-prev_state[i])):
-		# 		reward += 1
-		# 	else: reward -= 1
+
+		if (abs(750 - state[0]) < 100 and abs(750 - state[1]) < 100):
+			reward = 20
+		elif (abs(500 - state[0]) < 100 or abs(750 - state[1]) < 100):
+			reward = 1
+
+		if (abs(750 - state[0]) < abs(750 - prev_state[0])):
+			reward = 1
+		else:
+			reward = -1
+
+		if (abs(750 - state[1]) < abs(750 - prev_state[1])):
+			reward = 1
+		else:
+			reward = -1
+
+		reward -= 1
+
 		return reward
 
 	def _seed(self, seed=None):
@@ -159,9 +187,10 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		step_reward = self.compute_reward(self.state, self.prev_state)
 
 		# check if done
-		done = self.done_check(self.state)
+		done = self.done_check(self.state, self.prev_state)
 
 		self.prev_state = self.state
+		self.count += 1
 		info = {}
 
       	# return state reward and done flag
@@ -222,6 +251,8 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 			self.pause()
 		except (rospy.ServiceException) as e:
 			print ("/gazebo/pause_physics service call failed")
+
+		self.count = 0
 
 		return self.state
 
