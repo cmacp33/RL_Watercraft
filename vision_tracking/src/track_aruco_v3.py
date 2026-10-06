@@ -4,6 +4,11 @@ from collections import defaultdict
 import math
 import serial
 import time
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from policy_contract import PoseObservationAdapter, esp32_motor_action
 
 # ====== SERIAL Settings
 SERIAL_PORT    = "/dev/cu.usbserial-2140"   #this is for linux/macm change to COM etc on Windows
@@ -441,6 +446,12 @@ def send_motor_command(ser, motor_left, motor_right):
         print(f"[ERROR] Failed to send serial: {e}")
 
 
+def send_policy_action(ser, action):
+    """Scale a normalized policy action to ESP32 motor commands and send it."""
+    motor_left, motor_right = esp32_motor_action(action)
+    send_motor_command(ser, int(motor_left), int(motor_right))
+
+
 def main():
     
     # load K and D from the file
@@ -486,6 +497,7 @@ def main():
     Extrinsic_water, t_water, Z_water = find_water_extrinsic(id_to_corners, K, D, R, t)
     
     motor_left, motor_right = 0, 0  # default to stop
+    pose_adapter = PoseObservationAdapter(position_scale_m=0.5)
     
     while True:
         ret, frame = cap.read()
@@ -511,6 +523,9 @@ def main():
 
             if marker_pose is not None:
                 xw, yw, zw, yaw_deg = marker_pose
+                policy_obs = pose_adapter.update(
+                    xw, yw, yaw_deg, time.monotonic(), TARGET[0], TARGET[1]
+                )
                 OLD_motor_left, OLD_motor_right = motor_left, motor_right
                 motor_left, motor_right, debug = compute_motor_command_to_target(
                     xw, yw, yaw_deg, TARGET)
@@ -550,6 +565,7 @@ def main():
                     f"({xw:.4f}, {yw:.4f}, {zw:.4f}) cm, {yaw_deg:.2f} deg"
                     f"{debug['mode']} dist={debug['distance_cm']:.1f}cm "
                     f"err={debug['heading_error_deg']:.1f}deg "
+                    f"policy_obs={np.round(policy_obs, 3).tolist()} "
                     f"L={motor_left} R={motor_right}"
                 )
             else:

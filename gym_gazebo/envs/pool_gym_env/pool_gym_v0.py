@@ -4,19 +4,18 @@ import rospy
 import roslaunch
 import time
 import numpy as np
-from gym import utils, spaces
+from gym import spaces
 from gym_gazebo.envs import gazebo_env
-from geometry_msgs.msg import Twist
+from gazebo_msgs.msg import ModelStates
 from std_srvs.srv import Empty
 from gym.utils import seeding
-import copy
 import math
 import os
-import cv2
-import cv2.aruco as aruco
-from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import Float32
-from sensor_msgs.msg import Image
+from policy_contract import (
+	gazebo_thrust_action,
+	policy_observation,
+)
 
 class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 	def __init__(self):
@@ -34,93 +33,68 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		# init pubs & subs
 		self.left_pub = rospy.Publisher('/boat/thrusters/left_thrust_cmd', Float32, queue_size=10)
 		self.right_pub = rospy.Publisher('/boat/thrusters/right_thrust_cmd', Float32, queue_size=10)
-		# init aruco detector
-		aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
-		aruco_params = aruco.DetectorParameters()
-		self.detector = aruco.ArucoDetector(aruco_dict, aruco_params)
 		
 		# misc
 		self._seed()
-		self.bridge = CvBridge()
 
 		# define action and observation spaces
-		act_high = np.array([1, 1])
-		obs_high = np.array([np.inf, np.inf, np.inf, np.inf, np.pi, np.inf])
-		self.action_space = spaces.Box(-act_high, act_high)
-		self.observation_space = spaces.Box(-obs_high, obs_high)
+		self.action_space = spaces.Box(-1.0, 1.0, shape=(2,), dtype=np.float32)
+		self.observation_space = spaces.Box(-1.0, 1.0, shape=(6,), dtype=np.float32)
 
-		# position target (x y yaw x' y' yaw')
-		self.target = np.array([5, 5, 0, 0, 0, 0])
-		self.tol = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+		self.goal = np.array([5.0, 5.0], dtype=np.float32)
+		self.position_scale_m = 10.0
+		self.marker_offset_x_m = 0.5
+		self.control_period_s = 0.1
 
 		# timeout counter
 		self.count = 0
 
-	def get_state(self, prev_state, corners):
+	def get_state(self):
+		model_states = rospy.wait_for_message('/gazebo/model_states', ModelStates, timeout=5)
+		try:
+			boat_index = model_states.name.index('boat')
+		except ValueError as error:
+			raise RuntimeError("Gazebo model_states does not contain the 'boat' model") from error
 
-		# extract x and y at tag center
-		corner_pts = corners[0][0]
-		center = corner_pts.mean(axis=0)
-		x,y = center.astype(int)
-
-		# calc yaw
-		tag_top = corner_pts[1] - corner_pts[0]
-		a_rad = np.arctan2(-tag_top[1], tag_top[0])
-		a = np.degrees(a_rad)
-
-		# calc velocities
-
-		if self.prev_time == 0:
-			return [x,y,a,0,0,0]
-		
-		dt =  (self.time - self.prev_time).to_sec()
-		if(dt == 0):
-			x_vel = prev_state[3]
-			y_vel = prev_state[4]
-			a_vel = prev_state[5]
-		else:
-			x_vel = (x - prev_state[0]) / dt
-			y_vel = (y - prev_state[1]) / dt
-			a_vel = (a - prev_state[2]) / dt
-
-		# return state
-		return [x,y,a,x_vel,y_vel,a_vel]
+		pose = model_states.pose[boat_index]
+		twist = model_states.twist[boat_index]
+		q = pose.orientation
+		yaw = math.atan2(
+			2.0 * (q.w * q.z + q.x * q.y),
+			1.0 - 2.0 * (q.y * q.y + q.z * q.z),
+		)
+		offset_x = self.marker_offset_x_m * math.cos(yaw)
+		offset_y = self.marker_offset_x_m * math.sin(yaw)
+		yaw_rate = twist.angular.z
+		marker_x = pose.position.x + offset_x
+		marker_y = pose.position.y + offset_y
+		marker_velocity_x = twist.linear.x - yaw_rate * offset_y
+		marker_velocity_y = twist.linear.y + yaw_rate * offset_x
+		return policy_observation(
+			marker_x,
+			marker_y,
+			yaw,
+			marker_velocity_x,
+			marker_velocity_y,
+			yaw_rate,
+			float(self.goal[0]),
+			float(self.goal[1]),
+			position_scale_m=self.position_scale_m,
+		)
 
 
 	def done_check(self, state, prev_state):
 
-		# TEMP IMPLEMENTATION FOR TESTING XENTROPY
-
-		done = False
-		if ((abs(750 - state[0]) < 100 and abs(750 - state[1]) < 100) or self.count > 100):
-			done = True
-			print("DONE DONE DONE DONE DONE DONE DONE")
-
-		return done
+		goal_distance_m = self.position_scale_m * math.hypot(state[0], state[1])
+		return goal_distance_m <= 0.5 or self.count >= 100
 		
 	def compute_reward(self, state, prev_state):
 
-		# TEMP IMPLEMENTATION FOR TESTING XENTROPY
-
-		reward = 0
-
-		if (abs(750 - state[0]) < 100 and abs(750 - state[1]) < 100):
-			reward = 20
-		elif (abs(500 - state[0]) < 100 or abs(750 - state[1]) < 100):
-			reward = 1
-
-		if (abs(750 - state[0]) < abs(750 - prev_state[0])):
-			reward = 1
-		else:
-			reward = -1
-
-		if (abs(750 - state[1]) < abs(750 - prev_state[1])):
-			reward = 1
-		else:
-			reward = -1
-
-		reward -= 1
-
+		previous_distance = self.position_scale_m * math.hypot(prev_state[0], prev_state[1])
+		current_distance = self.position_scale_m * math.hypot(state[0], state[1])
+		reward = previous_distance - current_distance
+		if current_distance <= 0.5:
+			reward += 10.0
 		return reward
 
 	def _seed(self, seed=None):
@@ -128,8 +102,7 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		return [seed]
 
 	def step(self, action):
-		speedL = action[0]
-		speedR = action[1]
+		action = gazebo_thrust_action(action)
 
 		# unpause physics
 		rospy.wait_for_service('/gazebo/unpause_physics')
@@ -139,48 +112,12 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 			print ("/gazebo/unpause_physics service call failed")
 
 		# execute action
-		self.left_pub.publish(speedL)
-		self.right_pub.publish(speedR)
-
-		# get data from topic
-		img_data = None
-		while img_data is None:
-			try:
-				img_data = rospy.wait_for_message('/camera1/image_raw', Image, timeout=5)
-			except:
-				pass
-
-		# process image
-		try:
-
-			self.prev_time = self.time
-			self.time = img_data.header.stamp
-
-			cv_image = self.bridge.imgmsg_to_cv2(img_data, "bgr8")
-			gray = cv2.cvtColor(cv_image, cv2.COLOR_RGB2GRAY)
-
-			corners, ids, rejected = self.detector.detectMarkers(gray)
-			aruco.drawDetectedMarkers(cv_image, corners, ids)
-
-			cv2.imshow("Camera Feed", cv_image)
-			cv2.waitKey(1)
-
-		except CvBridgeError as e:
-			print(e)
-
-        # pause physics
-		# rospy.wait_for_service('/gazebo/pause_physics')
-		# try:
-		# 	self.pause()
-		# except (rospy.ServiceException) as e:
-		# 	print ("/gazebo/pause_physics service call failed")
-
-		# get current state (x y yaw, x' y' yaw')
+		self.left_pub.publish(float(action[0]))
+		self.right_pub.publish(float(action[1]))
+		rospy.sleep(self.control_period_s)
 		self.prev_state = self.state
-		if len(corners) > 0:
-			self.state = self.get_state(self.prev_state,corners)
-		else:
-			pass
+		self.state = self.get_state()
+		self.pause()
 
 		# compute reward
 		step_reward = self.compute_reward(self.state, self.prev_state)
@@ -188,7 +125,6 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		# check if done
 		done = self.done_check(self.state, self.prev_state)
 
-		self.prev_state = self.state
 		self.count += 1
 		info = {}
 
@@ -202,7 +138,7 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		try:
 			self.reset_proxy()
 		except (rospy.ServiceException) as e:
-			print ("/gazebo/reset_simulation service call failed")
+			print ("/gazebo/reset_world service call failed")
 
 		# unpause simulation to make observation
 		rospy.wait_for_service('/gazebo/unpause_physics')
@@ -211,45 +147,9 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		except (rospy.ServiceException) as e:
 			print ("/gazebo/unpause_physics service call failed")
 
-		# get data from topic
-		img_data = None
-		while img_data is None:
-			try:
-				img_data = rospy.wait_for_message('/camera1/image_raw', Image, timeout=5)
-			except:
-				pass
-
-		# process image
-		try:
-
-			self.prev_state = [0,0,0,0,0,0]
-			self.prev_time = 0
-			self.time = img_data.header.stamp
-
-			cv_image = self.bridge.imgmsg_to_cv2(img_data, "bgr8")
-			gray = cv2.cvtColor(cv_image, cv2.COLOR_RGB2GRAY)
-
-			corners, ids, rejected = self.detector.detectMarkers(gray)
-			aruco.drawDetectedMarkers(cv_image, corners, ids)
-
-			cv2.imshow("Camera Feed", cv_image)
-			cv2.waitKey(1)
-
-		except CvBridgeError as e:
-			print(e)
-
-		# get current state (x y yaw, x' y' yaw')
-		if len(corners) > 0:
-			self.state = self.get_state(self.prev_state,corners)
-		else:
-			self.state = self.prev_state
-
-		# pause physics
-		rospy.wait_for_service('/gazebo/pause_physics')
-		try:
-			self.pause()
-		except (rospy.ServiceException) as e:
-			print ("/gazebo/pause_physics service call failed")
+		self.state = self.get_state()
+		self.prev_state = self.state
+		self.pause()
 
 		self.count = 0
 
