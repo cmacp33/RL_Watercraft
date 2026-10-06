@@ -55,7 +55,7 @@ def iterate_batches(env, net, batch_size):
 
     while True:
 
-        # breakout actions and obsevations
+        # choose an action
         scale = 0.01
         obs_v = torch.FloatTensor([obs])
         action_v = net(obs_v)
