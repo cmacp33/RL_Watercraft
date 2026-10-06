@@ -22,19 +22,18 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 	def __init__(self):
 		
 		# init environment
-		LAUNCH_PATH = '/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src/boat_gazebo/launch/boat.launch'
+		LAUNCH_PATH = os.path.abspath(os.path.join(
+			os.path.dirname(__file__), '..', 'ros_ws', 'src', 'boat_gazebo', 'launch', 'boat.launch'))
 		gazebo_env.GazeboEnv.__init__(self, LAUNCH_PATH)
 
 		# init gazebo services
 		self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
-		self.pause = rospy.ServiceProxy('gazebo/pause_physics', Empty)
+		self.pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
 		self.reset_proxy = rospy.ServiceProxy('/gazebo/reset_world', Empty)
 
 		# init pubs & subs
 		self.left_pub = rospy.Publisher('/boat/thrusters/left_thrust_cmd', Float32, queue_size=10)
 		self.right_pub = rospy.Publisher('/boat/thrusters/right_thrust_cmd', Float32, queue_size=10)
-		rospy.Subscriber('/camera1/image_raw', Image, queue_size=10)
-
 		# init aruco detector
 		aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
 		aruco_params = aruco.DetectorParameters()
@@ -199,7 +198,7 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 	def reset(self):
 
 		# reset environment
-		rospy.wait_for_service('/gazebo/reset_simulation')
+		rospy.wait_for_service('/gazebo/reset_world')
 		try:
 			self.reset_proxy()
 		except (rospy.ServiceException) as e:
