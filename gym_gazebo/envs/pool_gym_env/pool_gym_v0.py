@@ -90,10 +90,15 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		
 	def compute_reward(self, state, prev_state):
 
-		previous_distance = self.position_scale_m * math.hypot(prev_state[0], prev_state[1])
-		current_distance = self.position_scale_m * math.hypot(state[0], state[1])
-		reward = previous_distance - current_distance
-		if current_distance <= 0.5:
+		#previous_distance = self.position_scale_m * math.hypot(prev_state[0], prev_state[1])
+		#current_distance = self.position_scale_m * math.hypot(state[0], state[1])
+		previous_position = self.position_scale_m * math.hypot(prev_state[0], prev_state[1])
+		current_position = self.position_scale_m * math.hypot(state[0], state[1])
+
+		original_position = self.position_scale_m * math.hypot(prev_state[0], prev_state[1])
+
+		reward = current_position - original_position
+		if current_position <= 0.5:
 			reward += 10.0
 		return reward
 
