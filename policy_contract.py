@@ -22,7 +22,9 @@ def policy_observation(
     goal_y_m,
     position_scale_m=POSITION_SCALE_M,
 ):
-    """Return the normalized 6-value body-relative observation.
+    """
+    Takes in observation in world coordinates.
+    Return the normalized 6-value body-relative observation, in boat coordinates.
 
     Values are goal-forward, goal-left, heading-error sine/cosine,
     forward speed, and yaw rate. Heading and yaw rate are in radians.
@@ -46,6 +48,7 @@ def policy_observation(
     heading_error = math.atan2(dy, dx) - yaw_rad
     forward_speed_mps = cos_yaw * velocity_x_mps + sin_yaw * velocity_y_mps
 
+    # with respect to boat's own axis
     observation = np.array(
         [
             goal_forward_m / position_scale_m,
