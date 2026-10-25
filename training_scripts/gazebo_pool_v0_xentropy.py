@@ -14,12 +14,16 @@ import torch.optim as optim
 
 # params
 HIDDEN_SIZE = 128
-BATCH_SIZE = 8
+BATCH_SIZE = 8 # number of episodes
 PERCENTILE = 70
 REWARD_THRESHOLD = 150
 OBS_SIZE = 6
 ACT_SIZE = 2
 
+MAX_TRAIN_SEC = 60 * 60 # 1 hour of training
+
+# noise standard deviation
+NOISE_STD = 0.5
 
 # define the nn class
 class Net(nn.Module):
@@ -55,12 +59,11 @@ def iterate_batches(env, net, batch_size):
 
     while True:
 
-        # breakout actions and obsevations
-        scale = 0.01
+        # choose an action
         obs_v = torch.FloatTensor([obs])
         action_v = net(obs_v)
-        action = scale * action_v.data.numpy()[0]
-        action = np.tanh(action)
+        action = action_v.data.numpy()[0]
+        action = np.clip(np.tanh(action) + np.random.normal(0, NOISE_STD, size=ACT_SIZE), -1.0, 1.0)
 
         # step
         next_obs, reward, done, _ = env.step(action)
@@ -75,6 +78,8 @@ def iterate_batches(env, net, batch_size):
         if done:
             # add episode to history and reset everything
             batch.append(Episode(reward=episode_reward, steps=episode_steps))
+
+            # reset reward, steps, and env
             episode_reward = 0.0
             episode_steps = []
             next_obs = env.reset()
@@ -89,7 +94,7 @@ def iterate_batches(env, net, batch_size):
 # filter batches to gind the best ones
 def filter_batch(batch, percentile):
 
-    rewards = list(map(lambda s: s.reward, batch))
+    rewards = [episode.reward for episode in batch] # lists rewards of every batch
     reward_bound = np.percentile(rewards, percentile)
     reward_mean = float(np.mean(rewards))
 
@@ -111,7 +116,7 @@ def filter_batch(batch, percentile):
 if __name__ == '__main__':
 
     # setup env
-    env = gym.make('GazeboPool-v0')
+    env = gym.make('GazeboPool-v0') # init gym registered under gym_gazebo __init__
     time.sleep(2)
     obs_size = OBS_SIZE
     n_actions = ACT_SIZE
@@ -120,14 +125,17 @@ if __name__ == '__main__':
     net = Net(obs_size, HIDDEN_SIZE, n_actions)
 
     optimizer = optim.Adam(params=net.parameters(), lr=0.01)
+    
+    start_time = time.monotonic()
+    best_reward = -float("inf")
 
     # handle batches
     for iter_no, batch in enumerate(iterate_batches(env, net, BATCH_SIZE)):
 
         #filter batches
-        obs_v, acts_v, reward_b, reward_m = filter_batch(batch, PERCENTILE)
+        obs_v, acts_v, reward_b, reward_m = filter_batch(batch, PERCENTILE) # obs_v shape is (N,6) 
         optimizer.zero_grad()
-        action_scores_v = net(obs_v)
+        action_scores_v = torch.tanh(net(obs_v))
 
         # compute losses and back prop
         loss_v = nn.MSELoss()(action_scores_v, acts_v)
@@ -137,7 +145,17 @@ if __name__ == '__main__':
         print("%d: loss=%.3f, reward_mean=%.1f, reward_bound=%.1f" % (
             iter_no, loss_v.item(), reward_m, reward_b))
 
+        if reward_m > best_reward:
+            best_reward = reward_m
+            torch.save(net.state_dict(), "./saved_weights/pool_policy.pth")
+
         # stop if solved
         if reward_m > REWARD_THRESHOLD:
-            print("Solved!")
+            print("Save weights here")
             break
+        
+        if time.monotonic() - start_time >= MAX_TRAIN_SEC:
+            print("Training time limit reached")
+            break
+
+    torch.save(net.state_dict(), "./saved_weights/pool_policy.pth")
