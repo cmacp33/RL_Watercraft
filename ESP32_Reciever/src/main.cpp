@@ -46,24 +46,30 @@ const unsigned long COMMAND_TIMEOUT_MS = 1000;
 volatile unsigned long lastCommandTime = 0;  // written from ESP-NOW callback
 volatile bool failsafeActive = true;
 
-// Latest commanded speeds. The ESP-NOW callback only stores them; loop() applies them
-// so the reverse-neutral logic below runs in one place.
+// The ESCs lock up if they go straight from forward to reverse (or back). They need
+// a pulse in the new direction, then neutral, then the new direction again:
+//   +20 -> -20 (REVERSE_BRAKE_MS) -> 0 (REVERSE_NEUTRAL_MS) -> -20
+const unsigned long REVERSE_BRAKE_MS = 500;
+const unsigned long REVERSE_NEUTRAL_MS = 500;
+
+// Requested speeds from the latest command (written from ESP-NOW callback)
 volatile int targetLeft = 0;
 volatile int targetRight = 0;
 
-// These ESCs only accept reverse after sitting at neutral following forward thrust.
-// When a command goes from forward to reverse, output neutral for this long first.
-// Tune on the bench: shortest value where reverse engages reliably.
-const unsigned long REVERSE_NEUTRAL_MS = 150;
+enum ReversePhase { PHASE_RUN, PHASE_BRAKE, PHASE_NEUTRAL };
 
+// Per-motor state for the reversal sequence
 struct MotorState {
   int channel;
-  const char *name;
-  unsigned long lastForwardMs;  // last time this motor was driven forward
-  bool holding;                 // currently forcing neutral before reverse
+  int applied;                // speed currently sent to the ESC
+  int lastDir;                // direction the ESC is engaged in: -1, 0 or +1
+  ReversePhase phase;
+  int seqDir;                 // direction being switched to during a sequence
+  unsigned long phaseStart;
 };
-MotorState leftMotor = {LEFT_CHANNEL, "Left", 0, false};
-MotorState rightMotor = {RIGHT_CHANNEL, "Right", 0, false};
+
+MotorState leftMotor = {LEFT_CHANNEL, 0, 0, PHASE_RUN, 0, 0};
+MotorState rightMotor = {RIGHT_CHANNEL, 0, 0, PHASE_RUN, 0, 0};
 
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.print("\r\nLast Packet Send Status:\t");
@@ -95,23 +101,50 @@ void setMotorSpeed(int channel, int speed) {
   ledcWriteChannel(channel, dutyCycle);
 }
 
-// Apply a target speed, inserting neutral before reverse when the ESC needs it
-void applyMotor(MotorState &m, int target) {
+// Drive a motor toward the target speed, running the brake/neutral/reverse
+// sequence whenever the direction changes
+void updateMotor(MotorState &m, int target) {
+  target = constrain(target, -255, 255);
+  int dir = (target > 0) - (target < 0);
   unsigned long now = millis();
+
+  // New direction requested: start the sequence
+  if (m.phase == PHASE_RUN && dir != 0 && m.lastDir != 0 && dir != m.lastDir) {
+    m.phase = PHASE_BRAKE;
+    m.seqDir = dir;
+    m.phaseStart = now;
+    Serial.printf("[REVERSE ch%d] %lu ms: brake pulse %d\n", m.channel, now, target);
+  }
+
+  // Command went to 0 or back the other way mid-sequence: abandon it. lastDir is
+  // unchanged, so a later reversal runs the full sequence again.
+  if (m.phase != PHASE_RUN && dir != m.seqDir) {
+    m.phase = PHASE_RUN;
+    Serial.printf("[REVERSE ch%d] %lu ms: aborted (target %d)\n", m.channel, now, target);
+  }
+
   int output = target;
-  if (target < 0 && now - m.lastForwardMs < REVERSE_NEUTRAL_MS) {
-    output = 0;  // still within the neutral window after forward thrust
-    if (!m.holding) {
-      Serial.print("[REVERSE] "); Serial.print(m.name);
-      Serial.print(" holding neutral "); Serial.print(REVERSE_NEUTRAL_MS); Serial.println(" ms before reverse");
+  if (m.phase == PHASE_BRAKE) {
+    if (now - m.phaseStart >= REVERSE_BRAKE_MS) {
+      m.phase = PHASE_NEUTRAL;
+      m.phaseStart = now;
+      output = 0;
+      Serial.printf("[REVERSE ch%d] %lu ms: neutral\n", m.channel, now);
     }
-    m.holding = true;
-  } else {
-    m.holding = false;
+  } else if (m.phase == PHASE_NEUTRAL) {
+    output = 0;
+    if (now - m.phaseStart >= REVERSE_NEUTRAL_MS) {
+      m.phase = PHASE_RUN;
+      m.lastDir = m.seqDir;
+      output = target;
+      Serial.printf("[REVERSE ch%d] %lu ms: engaged %d\n", m.channel, now, target);
+    }
+  } else if (dir != 0) {
+    m.lastDir = dir;
   }
-  if (output > 0) {
-    m.lastForwardMs = now;
-  }
+
+  if (output == m.applied) return;
+  m.applied = output;
   setMotorSpeed(m.channel, output);
 }
 
@@ -144,9 +177,9 @@ void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, in
     Serial.print(" Right: ");
     Serial.println(cmd.rightSpeed);
     
-    // loop() applies these (with the neutral-before-reverse hold)
-    targetLeft = constrain(cmd.leftSpeed, -255, 255);
-    targetRight = constrain(cmd.rightSpeed, -255, 255);
+    // Store targets; loop() applies them through the reversal guard
+    targetLeft = cmd.leftSpeed;
+    targetRight = cmd.rightSpeed;
     lastCommandTime = millis();
     failsafeActive = false;
     return;
@@ -234,6 +267,9 @@ void loop() {
     Serial.println("[FAILSAFE] No speed command received - motors set to neutral");
   }
 
+  updateMotor(leftMotor, targetLeft);
+  updateMotor(rightMotor, targetRight);
+
   // Print heap memory every 10 seconds (diagnostic)
   if (now - lastHeapCheck > 10000) {
     uint32_t freeHeap = ESP.getFreeHeap();
@@ -247,10 +283,7 @@ void loop() {
     lastHeapCheck = now;
   }
   
-  applyMotor(leftMotor, targetLeft);
-  applyMotor(rightMotor, targetRight);
-
-  delay(10);
+  delay(20);
 }
 
 
