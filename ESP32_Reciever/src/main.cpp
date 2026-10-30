@@ -45,6 +45,31 @@ const unsigned long COMMAND_TIMEOUT_MS = 1000;
 volatile unsigned long lastCommandTime = 0;  // written from ESP-NOW callback
 volatile bool failsafeActive = true;
 
+// The ESCs lock up if they go straight from forward to reverse (or back). They need
+// a pulse in the new direction, then neutral, then the new direction again:
+//   +20 -> -20 (REVERSE_BRAKE_MS) -> 0 (REVERSE_NEUTRAL_MS) -> -20
+const unsigned long REVERSE_BRAKE_MS = 500;
+const unsigned long REVERSE_NEUTRAL_MS = 500;
+
+// Requested speeds from the latest command (written from ESP-NOW callback)
+volatile int targetLeft = 0;
+volatile int targetRight = 0;
+
+enum ReversePhase { PHASE_RUN, PHASE_BRAKE, PHASE_NEUTRAL };
+
+// Per-motor state for the reversal sequence
+struct MotorState {
+  int channel;
+  int applied;                // speed currently sent to the ESC
+  int lastDir;                // direction the ESC is engaged in: -1, 0 or +1
+  ReversePhase phase;
+  int seqDir;                 // direction being switched to during a sequence
+  unsigned long phaseStart;
+};
+
+MotorState leftMotor = {LEFT_CHANNEL, 0, 0, PHASE_RUN, 0, 0};
+MotorState rightMotor = {RIGHT_CHANNEL, 0, 0, PHASE_RUN, 0, 0};
+
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.print("\r\nLast Packet Send Status:\t");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
@@ -75,6 +100,53 @@ void setMotorSpeed(int channel, int speed) {
   ledcWrite(channel, dutyCycle);
 }
 
+// Drive a motor toward the target speed, running the brake/neutral/reverse
+// sequence whenever the direction changes
+void updateMotor(MotorState &m, int target) {
+  target = constrain(target, -255, 255);
+  int dir = (target > 0) - (target < 0);
+  unsigned long now = millis();
+
+  // New direction requested: start the sequence
+  if (m.phase == PHASE_RUN && dir != 0 && m.lastDir != 0 && dir != m.lastDir) {
+    m.phase = PHASE_BRAKE;
+    m.seqDir = dir;
+    m.phaseStart = now;
+    Serial.printf("[REVERSE ch%d] %lu ms: brake pulse %d\n", m.channel, now, target);
+  }
+
+  // Command went to 0 or back the other way mid-sequence: abandon it. lastDir is
+  // unchanged, so a later reversal runs the full sequence again.
+  if (m.phase != PHASE_RUN && dir != m.seqDir) {
+    m.phase = PHASE_RUN;
+    Serial.printf("[REVERSE ch%d] %lu ms: aborted (target %d)\n", m.channel, now, target);
+  }
+
+  int output = target;
+  if (m.phase == PHASE_BRAKE) {
+    if (now - m.phaseStart >= REVERSE_BRAKE_MS) {
+      m.phase = PHASE_NEUTRAL;
+      m.phaseStart = now;
+      output = 0;
+      Serial.printf("[REVERSE ch%d] %lu ms: neutral\n", m.channel, now);
+    }
+  } else if (m.phase == PHASE_NEUTRAL) {
+    output = 0;
+    if (now - m.phaseStart >= REVERSE_NEUTRAL_MS) {
+      m.phase = PHASE_RUN;
+      m.lastDir = m.seqDir;
+      output = target;
+      Serial.printf("[REVERSE ch%d] %lu ms: engaged %d\n", m.channel, now, target);
+    }
+  } else if (dir != 0) {
+    m.lastDir = dir;
+  }
+
+  if (output == m.applied) return;
+  m.applied = output;
+  setMotorSpeed(m.channel, output);
+}
+
 // Callback when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   char macStr[18];
@@ -102,13 +174,11 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     Serial.print(" Right: ");
     Serial.println(cmd.rightSpeed);
     
-    // Set motor speeds using proper ESC control
-    setMotorSpeed(LEFT_CHANNEL, cmd.leftSpeed);
-    setMotorSpeed(RIGHT_CHANNEL, cmd.rightSpeed);
+    // Store targets; loop() applies them through the reversal guard
+    targetLeft = cmd.leftSpeed;
+    targetRight = cmd.rightSpeed;
     lastCommandTime = millis();
     failsafeActive = false;
-
-    Serial.println("Motors updated!");
     return;
   }
   
@@ -190,11 +260,14 @@ void loop() {
   // Failsafe: return motors to neutral if the transmitter goes silent
   unsigned long lastCmd = lastCommandTime;  // snapshot before reading millis()
   if (!failsafeActive && millis() - lastCmd > COMMAND_TIMEOUT_MS) {
-    setMotorSpeed(LEFT_CHANNEL, 0);
-    setMotorSpeed(RIGHT_CHANNEL, 0);
+    targetLeft = 0;
+    targetRight = 0;
     failsafeActive = true;
     Serial.println("[FAILSAFE] No speed command received - motors set to neutral");
   }
+
+  updateMotor(leftMotor, targetLeft);
+  updateMotor(rightMotor, targetRight);
 
   // Print heap memory every 10 seconds (diagnostic)
   if (now - lastHeapCheck > 10000) {
