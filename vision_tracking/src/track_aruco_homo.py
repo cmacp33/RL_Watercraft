@@ -9,8 +9,10 @@ with 4 aruco codes, id 0,1,2,3. Must be placed correctly.
 Tracks id 4 aruco and returns position (x,y) with respect to rectangle.
 
 This uses 2D only homography, no 3D pose estimation.
+
+This version is DEPRECATED. See track_aruco.py for more robust version.
 '''
-# ===== INPUT =====
+# ===== INPUTS =====
 CAM_INDEX = 0
 DICT = cv2.aruco.DICT_4X4_50
 
