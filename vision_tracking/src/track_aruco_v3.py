@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from policy_contract import PoseObservationAdapter, esp32_motor_action
+from policy_contract import POSITION_SCALE_M, PoseObservationAdapter, esp32_motor_action
 
 # ====== SERIAL Settings
 SERIAL_PORT    = "/dev/cu.usbserial-2140"   #this is for linux/macm change to COM etc on Windows
@@ -497,7 +497,7 @@ def main():
     Extrinsic_water, t_water, Z_water = find_water_extrinsic(id_to_corners, K, D, R, t)
     
     motor_left, motor_right = 0, 0  # default to stop
-    pose_adapter = PoseObservationAdapter(position_scale_m=0.5)
+    pose_adapter = PoseObservationAdapter(position_scale_m=POSITION_SCALE_M)
     
     while True:
         ret, frame = cap.read()

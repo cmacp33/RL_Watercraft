@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
-  "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/share/usv_gazebo_plugins/worlds"
-  "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/share/usv_gazebo_plugins/worlds/buoyancy_plugin_demo.world"
+  "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/share/usv_gazebo_plugins/worlds"
+  "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/share/usv_gazebo_plugins/worlds/buoyancy_plugin_demo.world"
   "CMakeFiles/usv_gazebo_plugins__xacro_auto_generate_to_devel_space_"
   "worlds/buoyancy_plugin_demo.world"
 )

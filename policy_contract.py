@@ -5,7 +5,10 @@ import math
 import numpy as np
 
 
-POSITION_SCALE_M = 15.0
+# Shared by sim training and the real boat; a policy only works at the scale it
+# was trained with. Must exceed the max goal offset or observations clip.
+POSITION_SCALE_M = 20.0
+GOAL_RADIUS_M = 0.5
 FORWARD_SPEED_SCALE_MPS = 3.0
 YAW_RATE_SCALE_RADPS = 2.0
 ESP32_MAX_COMMAND = 255

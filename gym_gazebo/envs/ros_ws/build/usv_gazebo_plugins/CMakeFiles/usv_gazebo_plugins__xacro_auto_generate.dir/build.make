@@ -53,10 +53,10 @@ RM = /home/fizzer/.local/lib/python3.8/site-packages/cmake/data/bin/cmake -E rm 
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src
+CMAKE_SOURCE_DIR = /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build
+CMAKE_BINARY_DIR = /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build
 
 # Utility rule file for usv_gazebo_plugins__xacro_auto_generate.
 
@@ -68,9 +68,9 @@ include usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.di
 
 usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate: usv_gazebo_plugins/worlds/buoyancy_plugin_demo.world
 
-usv_gazebo_plugins/worlds/buoyancy_plugin_demo.world: /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src/usv_gazebo_plugins/worlds/buoyancy_plugin_demo.world.xacro
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "xacro: generating worlds/buoyancy_plugin_demo.world from worlds/buoyancy_plugin_demo.world.xacro"
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src/usv_gazebo_plugins && /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/catkin_generated/env_cached.sh xacro -o /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins/worlds/buoyancy_plugin_demo.world worlds/buoyancy_plugin_demo.world.xacro
+usv_gazebo_plugins/worlds/buoyancy_plugin_demo.world: /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src/usv_gazebo_plugins/worlds/buoyancy_plugin_demo.world.xacro
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "xacro: generating worlds/buoyancy_plugin_demo.world from worlds/buoyancy_plugin_demo.world.xacro"
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src/usv_gazebo_plugins && /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/catkin_generated/env_cached.sh xacro -o /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins/worlds/buoyancy_plugin_demo.world worlds/buoyancy_plugin_demo.world.xacro
 
 usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/codegen:
 .PHONY : usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/codegen
@@ -85,10 +85,10 @@ usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/build:
 .PHONY : usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/build
 
 usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/clean:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins && $(CMAKE_COMMAND) -P CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/cmake_clean.cmake
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins && $(CMAKE_COMMAND) -P CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/cmake_clean.cmake
 .PHONY : usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/clean
 
 usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/depend:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src/usv_gazebo_plugins /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src/usv_gazebo_plugins /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/depend
 

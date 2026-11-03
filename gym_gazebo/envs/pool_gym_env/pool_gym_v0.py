@@ -13,6 +13,8 @@ import math
 import os
 from std_msgs.msg import Float32
 from policy_contract import (
+	GOAL_RADIUS_M,
+	POSITION_SCALE_M,
 	gazebo_thrust_action,
 	policy_observation,
 )
@@ -42,14 +44,18 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		self.observation_space = spaces.Box(-1.0, 1.0, shape=(6,), dtype=np.float32)
 
 		self.goal = np.array([12.0, 12.0], dtype=np.float32)
-		self.position_scale_m = 20.0 # must exceed max goal offset or obs clips and distance reward reads 0
+		self.position_scale_m = POSITION_SCALE_M # shared with the real boat via policy_contract
 		self.marker_offset_x_m = 0.5
 		self.control_period_s = 0.1
+		# episode length = max_episode_steps * control_period_s of sim time (300 -> 30 s);
+		# must be long enough to cover the start-to-goal distance (~16.6 m) at the boat's speed
+		self.max_episode_steps = 300
 
 		# reward weights
 		self.distance_weight = 2.0 # per metre closer to goal
 		self.heading_weight = 0.5 # per radian turned toward goal
 		self.step_penalty = 0.02 # per step
+		self.goal_bonus = 30.0 # paid once, on the step the goal is reached
 
 		# timeout counter
 		self.count = 0
@@ -91,7 +97,7 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 	def done_check(self, state, prev_state):
 
 		goal_distance_m = self.position_scale_m * math.hypot(state[0], state[1])
-		return goal_distance_m <= 0.5 or self.count >= 100
+		return goal_distance_m <= GOAL_RADIUS_M or self.count >= self.max_episode_steps
 		
 	def compute_reward(self, state, prev_state):
 
@@ -110,11 +116,9 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		# small cost every step so standing still is never 0.0
 		reward = distance_reward + heading_reward - self.step_penalty
 
-		if current_dist <= 2.0:
-			reward += 10.0
-		
-		if current_dist <= 1.0:
-			reward += 20.0
+		# one-time terminal bonus: reaching the goal ends the episode (done_check), so no more reward farming by hovering
+		if current_dist <= GOAL_RADIUS_M:
+			reward += self.goal_bonus
 		return reward
 
 	def _seed(self, seed=None):
@@ -134,10 +138,12 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		# execute action
 		self.left_pub.publish(float(action[0]))
 		self.right_pub.publish(float(action[1]))
+		step_start = rospy.get_time() # sim time (use_sim_time)
 		rospy.sleep(self.control_period_s)
 		self.prev_state = self.state
 		self.state = self.get_state()
 		self.pause() # pause physics
+		sim_dt = rospy.get_time() - step_start # > control_period_s if pausing lags behind fast physics
 
 		# compute reward
 		step_reward = self.compute_reward(self.state, self.prev_state)
@@ -146,7 +152,7 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		done = self.done_check(self.state, self.prev_state)
 
 		self.count += 1
-		info = {}
+		info = {'sim_dt': sim_dt}
 
       	# return state reward and done flag
 		return self.state, step_reward, done, info

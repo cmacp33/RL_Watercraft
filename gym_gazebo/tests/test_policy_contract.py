@@ -15,7 +15,7 @@ class PolicyContractTests(unittest.TestCase):
     def test_goal_ahead_has_zero_lateral_and_heading_error(self):
         observation = policy_observation(0, 0, 0, 0, 0, 0, 3, 0)
 
-        np.testing.assert_allclose(observation, [0.2, 0, 0, 1, 0, 0])
+        np.testing.assert_allclose(observation, [3 / 20, 0, 0, 1, 0, 0])
 
     def test_goal_to_left_is_positive_left_and_heading_error(self):
         observation = policy_observation(0, 0, 0, 0, 0, 0, 0, 3)

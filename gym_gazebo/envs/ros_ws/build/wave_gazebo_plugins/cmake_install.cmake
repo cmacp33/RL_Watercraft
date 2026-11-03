@@ -1,8 +1,8 @@
-# Install script for directory: /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src/wave_gazebo_plugins
+# Install script for directory: /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src/wave_gazebo_plugins
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/install")
+  set(CMAKE_INSTALL_PREFIX "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/install")
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -43,18 +43,18 @@ if(NOT DEFINED CMAKE_OBJDUMP)
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig" TYPE FILE FILES "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/wave_gazebo_plugins/catkin_generated/installspace/wave_gazebo_plugins.pc")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig" TYPE FILE FILES "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/wave_gazebo_plugins/catkin_generated/installspace/wave_gazebo_plugins.pc")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/wave_gazebo_plugins/cmake" TYPE FILE FILES
-    "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/wave_gazebo_plugins/catkin_generated/installspace/wave_gazebo_pluginsConfig.cmake"
-    "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/wave_gazebo_plugins/catkin_generated/installspace/wave_gazebo_pluginsConfig-version.cmake"
+    "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/wave_gazebo_plugins/catkin_generated/installspace/wave_gazebo_pluginsConfig.cmake"
+    "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/wave_gazebo_plugins/catkin_generated/installspace/wave_gazebo_pluginsConfig-version.cmake"
     )
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/wave_gazebo_plugins" TYPE FILE FILES "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src/wave_gazebo_plugins/package.xml")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/wave_gazebo_plugins" TYPE FILE FILES "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src/wave_gazebo_plugins/package.xml")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
@@ -64,7 +64,7 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
          FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libHydrodynamics.so"
          RPATH "")
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE SHARED_LIBRARY FILES "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libHydrodynamics.so")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE SHARED_LIBRARY FILES "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libHydrodynamics.so")
   if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libHydrodynamics.so" AND
      NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libHydrodynamics.so")
     file(RPATH_CHANGE
@@ -87,12 +87,12 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
          FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libWavefieldModelPlugin.so"
          RPATH "")
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE SHARED_LIBRARY FILES "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libWavefieldModelPlugin.so")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE SHARED_LIBRARY FILES "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libWavefieldModelPlugin.so")
   if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libWavefieldModelPlugin.so" AND
      NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libWavefieldModelPlugin.so")
     file(RPATH_CHANGE
          FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libWavefieldModelPlugin.so"
-         OLD_RPATH "/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/noetic/lib:/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib:"
+         OLD_RPATH "/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/noetic/lib:/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib:"
          NEW_RPATH "")
     if(CMAKE_INSTALL_DO_STRIP)
       execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libWavefieldModelPlugin.so")
@@ -110,12 +110,12 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
          FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libWavefieldVisualPlugin.so"
          RPATH "")
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE SHARED_LIBRARY FILES "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libWavefieldVisualPlugin.so")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE SHARED_LIBRARY FILES "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libWavefieldVisualPlugin.so")
   if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libWavefieldVisualPlugin.so" AND
      NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libWavefieldVisualPlugin.so")
     file(RPATH_CHANGE
          FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libWavefieldVisualPlugin.so"
-         OLD_RPATH "/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/noetic/lib:/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib:"
+         OLD_RPATH "/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/noetic/lib:/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib:"
          NEW_RPATH "")
     if(CMAKE_INSTALL_DO_STRIP)
       execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libWavefieldVisualPlugin.so")
@@ -133,12 +133,12 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
          FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libwavegauge_plugin.so"
          RPATH "")
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE SHARED_LIBRARY FILES "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libwavegauge_plugin.so")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE SHARED_LIBRARY FILES "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libwavegauge_plugin.so")
   if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libwavegauge_plugin.so" AND
      NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libwavegauge_plugin.so")
     file(RPATH_CHANGE
          FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libwavegauge_plugin.so"
-         OLD_RPATH "/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib:/opt/ros/noetic/lib:"
+         OLD_RPATH "/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib:/opt/ros/noetic/lib:"
          NEW_RPATH "")
     if(CMAKE_INSTALL_DO_STRIP)
       execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libwavegauge_plugin.so")
@@ -150,20 +150,20 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/wave_gazebo_plugins" TYPE DIRECTORY FILES "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src/wave_gazebo_plugins/include/wave_gazebo_plugins/" FILES_MATCHING REGEX "/[^/]*\\.hh$" REGEX "/[^/]*\\~$" EXCLUDE)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/wave_gazebo_plugins" TYPE DIRECTORY FILES "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src/wave_gazebo_plugins/include/wave_gazebo_plugins/" FILES_MATCHING REGEX "/[^/]*\\.hh$" REGEX "/[^/]*\\~$" EXCLUDE)
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include" TYPE DIRECTORY FILES "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src/wave_gazebo_plugins/include/" FILES_MATCHING REGEX "/\\.hh$")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include" TYPE DIRECTORY FILES "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src/wave_gazebo_plugins/include/" FILES_MATCHING REGEX "/\\.hh$")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/wave_gazebo_plugins" TYPE DIRECTORY FILES "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/wave_gazebo_plugins/" FILES_MATCHING REGEX "/[^/]*\\.pb\\.[^/]*$" REGEX "/[^/]*\\~$" EXCLUDE)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/wave_gazebo_plugins" TYPE DIRECTORY FILES "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/wave_gazebo_plugins/" FILES_MATCHING REGEX "/[^/]*\\.pb\\.[^/]*$" REGEX "/[^/]*\\~$" EXCLUDE)
 endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/wave_gazebo_plugins/install_local_manifest.txt"
+  file(WRITE "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/wave_gazebo_plugins/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

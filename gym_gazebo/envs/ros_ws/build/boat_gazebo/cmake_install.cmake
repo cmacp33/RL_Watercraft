@@ -1,8 +1,8 @@
-# Install script for directory: /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src/boat_gazebo
+# Install script for directory: /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src/boat_gazebo
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/install")
+  set(CMAKE_INSTALL_PREFIX "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/install")
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -43,27 +43,27 @@ if(NOT DEFINED CMAKE_OBJDUMP)
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig" TYPE FILE FILES "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/boat_gazebo/catkin_generated/installspace/boat_gazebo.pc")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig" TYPE FILE FILES "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/boat_gazebo/catkin_generated/installspace/boat_gazebo.pc")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/boat_gazebo/cmake" TYPE FILE FILES
-    "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/boat_gazebo/catkin_generated/installspace/boat_gazeboConfig.cmake"
-    "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/boat_gazebo/catkin_generated/installspace/boat_gazeboConfig-version.cmake"
+    "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/boat_gazebo/catkin_generated/installspace/boat_gazeboConfig.cmake"
+    "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/boat_gazebo/catkin_generated/installspace/boat_gazeboConfig-version.cmake"
     )
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/boat_gazebo" TYPE FILE FILES "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src/boat_gazebo/package.xml")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/boat_gazebo" TYPE FILE FILES "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src/boat_gazebo/package.xml")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/boat_gazebo" TYPE PROGRAM FILES "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/boat_gazebo/catkin_generated/installspace/controller.py")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/boat_gazebo" TYPE PROGRAM FILES "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/boat_gazebo/catkin_generated/installspace/controller.py")
 endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/boat_gazebo/install_local_manifest.txt"
+  file(WRITE "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/boat_gazebo/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

@@ -15,12 +15,19 @@ REPO_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(REPO_DIR, 'training_scripts'))
 from training_scripts.gazebo_pool_v0_xentropy import Net, HIDDEN_SIZE, OBS_SIZE, ACT_SIZE
 
-GOAL_RADIUS_M = 0.5 # matches done_check in pool_gym_v0
+from policy_contract import GOAL_RADIUS_M  # same radius as done_check in pool_gym_v0
+from run_logging import CsvLog, goal_distance_m
+
+EVAL_FIELDS = ['episode', 'total_reward', 'steps', 'start_dist_m', 'final_dist_m',
+               'min_dist_m', 'reached']
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--weights', default=os.path.join(REPO_DIR, 'saved_weights', 'pool_policy.pth'))
+    parser.add_argument('--weights', default=None,
+                        help='weights file (default: <run>/best.pth with --run, else saved_weights/pool_policy.pth)')
+    parser.add_argument('--run', default=None,
+                        help='training run folder under runs/; writes eval.csv there for compare_runs.py')
     parser.add_argument('--episodes', type=int, default=5)
     parser.add_argument('--goal', type=float, nargs=2, metavar=('X', 'Y'),
                         help='override env goal in tank coordinates (m)')
@@ -39,6 +46,13 @@ def choose_action(net, obs, noise_std):
 
 if __name__ == '__main__':
     args = parse_args()
+    if args.weights is None:
+        args.weights = (os.path.join(args.run, 'best.pth') if args.run
+                        else os.path.join(REPO_DIR, 'saved_weights', 'pool_policy.pth'))
+    # eval.csv is the training goal (read by compare_runs.py); other goals get their own file
+    eval_name = 'eval.csv' if args.goal is None else 'eval_goal_%g_%g.csv' % tuple(args.goal)
+    eval_path = os.path.join(args.run, eval_name) if args.run else None
+    eval_log = CsvLog(eval_path, EVAL_FIELDS) if eval_path else None
 
     # load policy
     net = Net(OBS_SIZE, HIDDEN_SIZE, ACT_SIZE)
@@ -59,7 +73,7 @@ if __name__ == '__main__':
     results = []
     for episode in range(args.episodes):
         obs = env.reset()
-        start_dist = pool_env.position_scale_m * math.hypot(obs[0], obs[1])
+        start_dist = min_dist = goal_distance_m(pool_env, obs)
         episode_reward = 0.0
         step_count = 0
         done = False
@@ -70,14 +84,19 @@ if __name__ == '__main__':
             episode_reward += reward
             step_count += 1
 
-            dist = pool_env.position_scale_m * math.hypot(obs[0], obs[1])
+            dist = goal_distance_m(pool_env, obs)
+            min_dist = min(min_dist, dist)
             heading_err_deg = math.degrees(math.atan2(obs[2], obs[3]))
             print("Ep %d step %3d | action [%+.2f %+.2f] | dist %.2f m | heading err %+6.1f deg | reward %+.3f" % (
                 episode, step_count, action[0], action[1], dist, heading_err_deg, reward))
 
-        final_dist = pool_env.position_scale_m * math.hypot(obs[0], obs[1])
+        final_dist = goal_distance_m(pool_env, obs)
         reached = final_dist <= GOAL_RADIUS_M
         results.append((episode_reward, final_dist, reached, step_count))
+        if eval_log:
+            eval_log.write(episode=episode, total_reward=episode_reward, steps=step_count,
+                           start_dist_m=start_dist, final_dist_m=final_dist,
+                           min_dist_m=min_dist, reached=int(reached))
         print("Episode %d: total reward=%.1f, start dist=%.2f m, final dist=%.2f m, steps=%d, %s" % (
             episode, episode_reward, start_dist, final_dist, step_count,
             "REACHED GOAL" if reached else "timed out"))
@@ -90,3 +109,6 @@ if __name__ == '__main__':
     print("reached goal: %d/%d" % (n_reached, len(results)))
     print("reward mean=%.1f min=%.1f max=%.1f" % (np.mean(rewards), np.min(rewards), np.max(rewards)))
     print("final dist mean=%.2f m" % np.mean(final_dists))
+    if eval_log:
+        eval_log.close()
+        print("Wrote", eval_path)
