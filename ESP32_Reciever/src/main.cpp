@@ -45,6 +45,25 @@ const unsigned long COMMAND_TIMEOUT_MS = 1000;
 volatile unsigned long lastCommandTime = 0;  // written from ESP-NOW callback
 volatile bool failsafeActive = true;
 
+// Latest commanded speeds. The ESP-NOW callback only stores them; loop() applies them
+// so the reverse-neutral logic below runs in one place.
+volatile int targetLeft = 0;
+volatile int targetRight = 0;
+
+// These ESCs only accept reverse after sitting at neutral following forward thrust.
+// When a command goes from forward to reverse, output neutral for this long first.
+// Tune on the bench: shortest value where reverse engages reliably.
+const unsigned long REVERSE_NEUTRAL_MS = 150;
+
+struct MotorState {
+  int channel;
+  const char *name;
+  unsigned long lastForwardMs;  // last time this motor was driven forward
+  bool holding;                 // currently forcing neutral before reverse
+};
+MotorState leftMotor = {LEFT_CHANNEL, "Left", 0, false};
+MotorState rightMotor = {RIGHT_CHANNEL, "Right", 0, false};
+
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.print("\r\nLast Packet Send Status:\t");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
@@ -75,6 +94,26 @@ void setMotorSpeed(int channel, int speed) {
   ledcWrite(channel, dutyCycle);
 }
 
+// Apply a target speed, inserting neutral before reverse when the ESC needs it
+void applyMotor(MotorState &m, int target) {
+  unsigned long now = millis();
+  int output = target;
+  if (target < 0 && now - m.lastForwardMs < REVERSE_NEUTRAL_MS) {
+    output = 0;  // still within the neutral window after forward thrust
+    if (!m.holding) {
+      Serial.print("[REVERSE] "); Serial.print(m.name);
+      Serial.print(" holding neutral "); Serial.print(REVERSE_NEUTRAL_MS); Serial.println(" ms before reverse");
+    }
+    m.holding = true;
+  } else {
+    m.holding = false;
+  }
+  if (output > 0) {
+    m.lastForwardMs = now;
+  }
+  setMotorSpeed(m.channel, output);
+}
+
 // Callback when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   char macStr[18];
@@ -102,13 +141,11 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     Serial.print(" Right: ");
     Serial.println(cmd.rightSpeed);
     
-    // Set motor speeds using proper ESC control
-    setMotorSpeed(LEFT_CHANNEL, cmd.leftSpeed);
-    setMotorSpeed(RIGHT_CHANNEL, cmd.rightSpeed);
+    // loop() applies these (with the neutral-before-reverse hold)
+    targetLeft = constrain(cmd.leftSpeed, -255, 255);
+    targetRight = constrain(cmd.rightSpeed, -255, 255);
     lastCommandTime = millis();
     failsafeActive = false;
-
-    Serial.println("Motors updated!");
     return;
   }
   
@@ -190,8 +227,8 @@ void loop() {
   // Failsafe: return motors to neutral if the transmitter goes silent
   unsigned long lastCmd = lastCommandTime;  // snapshot before reading millis()
   if (!failsafeActive && millis() - lastCmd > COMMAND_TIMEOUT_MS) {
-    setMotorSpeed(LEFT_CHANNEL, 0);
-    setMotorSpeed(RIGHT_CHANNEL, 0);
+    targetLeft = 0;
+    targetRight = 0;
     failsafeActive = true;
     Serial.println("[FAILSAFE] No speed command received - motors set to neutral");
   }
@@ -209,7 +246,10 @@ void loop() {
     lastHeapCheck = now;
   }
   
-  delay(20);
+  applyMotor(leftMotor, targetLeft);
+  applyMotor(rightMotor, targetRight);
+
+  delay(10);
 }
 
 

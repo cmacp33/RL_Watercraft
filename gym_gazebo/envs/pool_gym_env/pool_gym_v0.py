@@ -10,9 +10,14 @@ from gazebo_msgs.msg import ModelStates
 from std_srvs.srv import Empty
 from gym.utils import seeding
 import math
+from collections import deque
 import os
 from std_msgs.msg import Float32
 from policy_contract import (
+	FORWARD_SPEED_SCALE_MPS,
+	GOAL_RADIUS_M,
+	YAW_RATE_SCALE_RADPS,
+	POSITION_SCALE_M,
 	gazebo_thrust_action,
 	policy_observation,
 )
@@ -42,17 +47,76 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		self.observation_space = spaces.Box(-1.0, 1.0, shape=(6,), dtype=np.float32)
 
 		self.goal = np.array([12.0, 12.0], dtype=np.float32)
-		self.position_scale_m = 20.0 # must exceed max goal offset or obs clips and distance reward reads 0
+		self.position_scale_m = POSITION_SCALE_M # shared with the real boat via policy_contract
 		self.marker_offset_x_m = 0.5
 		self.control_period_s = 0.1
+		# episode length = max_episode_steps * control_period_s of sim time (300 -> 30 s);
+		# must be long enough to cover the start-to-goal distance (~16.6 m) at the boat's speed
+		self.max_episode_steps = 300
 
 		# reward weights
 		self.distance_weight = 2.0 # per metre closer to goal
 		self.heading_weight = 0.5 # per radian turned toward goal
 		self.step_penalty = 0.02 # per step
+		self.goal_bonus = 30.0 # paid once, on the step the goal is reached
 
 		# timeout counter
 		self.count = 0
+
+		# Domain randomization: per-episode random actuator/sensor conditions so the policy
+		# copes with what calibration can't fix on the real boat (battery level, motor
+		# mismatch, leftover deadband, latency, camera noise). Off by default; training
+		# turns it on with --randomize. Reward and done always use the TRUE state.
+		self.domain_randomization = False
+		self.dr_ranges = {
+			'motor_gain': (0.7, 1.15),      # per thruster, independent
+			'deadband': (0.0, 0.10),        # |action| below this does nothing (normalized)
+			'delay_steps': (0, 1),          # whole control steps of command latency
+			'pos_noise_m': 0.03,            # camera position noise (std)
+			'heading_noise_rad': math.radians(3.0),
+			'speed_noise_mps': 0.05,
+			'yaw_rate_noise_radps': 0.10,
+		}
+		self.dr_params = {}
+		self._pending_actions = deque()
+
+	def sample_randomization(self):
+		r = self.dr_ranges
+		self.dr_params = {
+			'left_gain': self.np_random.uniform(*r['motor_gain']),
+			'right_gain': self.np_random.uniform(*r['motor_gain']),
+			'deadband': self.np_random.uniform(*r['deadband']),
+			'delay_steps': int(self.np_random.randint(r['delay_steps'][0], r['delay_steps'][1] + 1)),
+		}
+		self._pending_actions = deque([np.zeros(2, dtype=np.float32)] * self.dr_params['delay_steps'])
+
+	def actuate(self, action):
+		"""What the thrusters actually do with a commanded action (identity without randomization)."""
+		if not self.domain_randomization:
+			return action
+		self._pending_actions.append(np.asarray(action, dtype=np.float32))
+		delayed = self._pending_actions.popleft()
+		p = self.dr_params
+		out = delayed * np.array([p['left_gain'], p['right_gain']], dtype=np.float32)
+		out[np.abs(delayed) < p['deadband']] = 0.0
+		return np.clip(out, -1.0, 1.0)
+
+	def observe(self, state):
+		"""Observation handed to the policy: the true state plus camera-like noise."""
+		if not self.domain_randomization:
+			return state
+		r = self.dr_ranges
+		obs = np.array(state, dtype=np.float32)
+		obs[0:2] += self.np_random.normal(0.0, r['pos_noise_m'], size=2) / self.position_scale_m
+		heading = math.atan2(obs[2], obs[3]) + self.np_random.normal(0.0, r['heading_noise_rad'])
+		obs[2], obs[3] = math.sin(heading), math.cos(heading)
+		obs[4] += self.np_random.normal(0.0, r['speed_noise_mps']) / FORWARD_SPEED_SCALE_MPS
+		obs[5] += self.np_random.normal(0.0, r['yaw_rate_noise_radps']) / YAW_RATE_SCALE_RADPS
+		return np.clip(obs, -1.0, 1.0)
+
+	def goal_distance_m(self):
+		"""True distance from the marker to the goal (not affected by observation noise)."""
+		return self.position_scale_m * math.hypot(self.state[0], self.state[1])
 
 	def get_state(self):
 		model_states = rospy.wait_for_message('/gazebo/model_states', ModelStates, timeout=5)
@@ -91,7 +155,7 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 	def done_check(self, state, prev_state):
 
 		goal_distance_m = self.position_scale_m * math.hypot(state[0], state[1])
-		return goal_distance_m <= 0.5 or self.count >= 100
+		return goal_distance_m <= GOAL_RADIUS_M or self.count >= self.max_episode_steps
 		
 	def compute_reward(self, state, prev_state):
 
@@ -110,11 +174,9 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		# small cost every step so standing still is never 0.0
 		reward = distance_reward + heading_reward - self.step_penalty
 
-		if current_dist <= 2.0:
-			reward += 10.0
-		
-		if current_dist <= 1.0:
-			reward += 20.0
+		# one-time terminal bonus: reaching the goal ends the episode (done_check), so no more reward farming by hovering
+		if current_dist <= GOAL_RADIUS_M:
+			reward += self.goal_bonus
 		return reward
 
 	def _seed(self, seed=None):
@@ -122,7 +184,7 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		return [seed]
 
 	def step(self, action):
-		action = gazebo_thrust_action(action)
+		action = self.actuate(gazebo_thrust_action(action))
 
 		# unpause physics
 		rospy.wait_for_service('/gazebo/unpause_physics')
@@ -134,10 +196,12 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		# execute action
 		self.left_pub.publish(float(action[0]))
 		self.right_pub.publish(float(action[1]))
+		step_start = rospy.get_time() # sim time (use_sim_time)
 		rospy.sleep(self.control_period_s)
 		self.prev_state = self.state
 		self.state = self.get_state()
 		self.pause() # pause physics
+		sim_dt = rospy.get_time() - step_start # > control_period_s if pausing lags behind fast physics
 
 		# compute reward
 		step_reward = self.compute_reward(self.state, self.prev_state)
@@ -146,10 +210,10 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		done = self.done_check(self.state, self.prev_state)
 
 		self.count += 1
-		info = {}
+		info = {'sim_dt': sim_dt, 'goal_dist_m': self.goal_distance_m(), 'applied_action': action}
 
       	# return state reward and done flag
-		return self.state, step_reward, done, info
+		return self.observe(self.state), step_reward, done, info
 
 	def reset(self):
 
@@ -172,7 +236,9 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		self.pause()
 
 		self.count = 0
+		if self.domain_randomization:
+			self.sample_randomization()
 
-		return self.state
+		return self.observe(self.state)
 
         
