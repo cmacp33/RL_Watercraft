@@ -16,6 +16,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from policy_contract import GOAL_RADIUS_M
+from export_policy import export as export_policy
 from run_logging import (EPISODE_FIELDS, ITERATION_FIELDS, REPO_DIR, CsvLog, TensorBoardLog, finish_run,
                          goal_distance_m, make_run_dir, write_config)
 
@@ -73,7 +74,7 @@ def iterate_batches(env, net, batch_size):
     episode_reward = 0.0
     sim_dts = []
     obs = env.reset()
-    start_dist = min_dist = goal_distance_m(pool_env, obs)
+    start_dist = min_dist = pool_env.goal_distance_m()  # true distance, not the noisy obs
 
     while True:
 
@@ -87,7 +88,7 @@ def iterate_batches(env, net, batch_size):
         next_obs, reward, done, info = env.step(action)
         sim_dts.append(info.get('sim_dt', float('nan')))
         episode_reward += reward
-        dist = goal_distance_m(pool_env, next_obs)
+        dist = info['goal_dist_m']
         min_dist = min(min_dist, dist)
 
         # add to episode step history
@@ -104,7 +105,7 @@ def iterate_batches(env, net, batch_size):
             episode_reward = 0.0
             episode_steps = []
             next_obs = env.reset()
-            start_dist = min_dist = goal_distance_m(pool_env, next_obs)
+            start_dist = min_dist = pool_env.goal_distance_m()
 
             if len(batch) == batch_size:
                 yield batch, float(np.mean(sim_dts))
@@ -145,6 +146,8 @@ def parse_args():
                         help='stop once batch success rate is >= this (set above 1 to disable)')
     parser.add_argument('--stop-iters', type=int, default=STOP_SUCCESS_ITERS,
                         help='... for this many consecutive batches')
+    parser.add_argument('--randomize', action='store_true',
+                        help='domain randomization: random motor gains/deadband/latency + sensor noise per episode')
     return parser.parse_args()
 
 
@@ -156,6 +159,7 @@ if __name__ == '__main__':
     env = gym.make('GazeboPool-v0') # init gym registered under gym_gazebo __init__
     time.sleep(2)
     pool_env = env.unwrapped
+    pool_env.domain_randomization = args.randomize
     obs_size = OBS_SIZE
     n_actions = ACT_SIZE
 
@@ -258,4 +262,8 @@ if __name__ == '__main__':
         torch.save(net.state_dict(), os.path.join(run_dir, 'final.pth'))
         os.makedirs(os.path.dirname(LATEST_WEIGHTS), exist_ok=True)
         shutil.copyfile(os.path.join(run_dir, 'final.pth'), LATEST_WEIGHTS)
+        # numpy copies for the camera machine (no torch there): policy_contract.NumpyPolicy
+        for name in ('best', 'final'):
+            if os.path.exists(os.path.join(run_dir, name + '.pth')):
+                export_policy(os.path.join(run_dir, name + '.pth'))
         print("Saved run to", run_dir, "and latest weights to", LATEST_WEIGHTS)

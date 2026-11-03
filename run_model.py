@@ -31,6 +31,8 @@ def parse_args():
     parser.add_argument('--episodes', type=int, default=5)
     parser.add_argument('--goal', type=float, nargs=2, metavar=('X', 'Y'),
                         help='override env goal in tank coordinates (m)')
+    parser.add_argument('--randomize', action='store_true',
+                        help='evaluate under domain randomization (random motor gains/deadband/latency + sensor noise)')
     parser.add_argument('--noise', type=float, default=0.0,
                         help='optional action noise std, 0 = deterministic policy')
     return parser.parse_args()
@@ -51,6 +53,8 @@ if __name__ == '__main__':
                         else os.path.join(REPO_DIR, 'saved_weights', 'pool_policy.pth'))
     # eval.csv is the training goal (read by compare_runs.py); other goals get their own file
     eval_name = 'eval.csv' if args.goal is None else 'eval_goal_%g_%g.csv' % tuple(args.goal)
+    if args.randomize:
+        eval_name = eval_name.replace('.csv', '_randomized.csv')
     eval_path = os.path.join(args.run, eval_name) if args.run else None
     eval_log = CsvLog(eval_path, EVAL_FIELDS) if eval_path else None
 
@@ -64,6 +68,7 @@ if __name__ == '__main__':
     env = gym.make('GazeboPool-v0')
     time.sleep(2)
     pool_env = env.unwrapped
+    pool_env.domain_randomization = args.randomize
 
     # goal is read in get_state, so set it before reset
     if args.goal is not None:
@@ -73,24 +78,24 @@ if __name__ == '__main__':
     results = []
     for episode in range(args.episodes):
         obs = env.reset()
-        start_dist = min_dist = goal_distance_m(pool_env, obs)
+        start_dist = min_dist = pool_env.goal_distance_m()
         episode_reward = 0.0
         step_count = 0
         done = False
 
         while not done:
             action = choose_action(net, obs, args.noise)
-            obs, reward, done, _ = env.step(action)
+            obs, reward, done, info = env.step(action)
             episode_reward += reward
             step_count += 1
 
-            dist = goal_distance_m(pool_env, obs)
+            dist = info['goal_dist_m']
             min_dist = min(min_dist, dist)
             heading_err_deg = math.degrees(math.atan2(obs[2], obs[3]))
             print("Ep %d step %3d | action [%+.2f %+.2f] | dist %.2f m | heading err %+6.1f deg | reward %+.3f" % (
                 episode, step_count, action[0], action[1], dist, heading_err_deg, reward))
 
-        final_dist = goal_distance_m(pool_env, obs)
+        final_dist = pool_env.goal_distance_m()
         reached = final_dist <= GOAL_RADIUS_M
         results.append((episode_reward, final_dist, reached, step_count))
         if eval_log:

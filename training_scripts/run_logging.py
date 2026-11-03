@@ -63,6 +63,8 @@ def write_config(run_dir, tag, env, hyperparams):
         'goal': [float(v) for v in env.goal],
         'position_scale_m': env.position_scale_m,
         'max_episode_steps': getattr(env, 'max_episode_steps', None),
+        'domain_randomization': (getattr(env, 'dr_ranges', None)
+                                 if getattr(env, 'domain_randomization', False) else False),
         'control_period_s': getattr(env, 'control_period_s', None),
         'reward_params': reward_params,
         'hyperparams': hyperparams,
