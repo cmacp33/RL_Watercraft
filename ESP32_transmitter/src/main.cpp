@@ -41,6 +41,14 @@ const int SPEED_STEP = 25;                 // change per hotkey press
 const unsigned long UI_REFRESH_MS = 200;   // dashboard redraw interval
 const unsigned long LINK_TIMEOUT_MS = 1500;
 
+// Failsafe: if no serial command arrives for this long, command both motors to 0.
+// The PC control loop sends every 100 ms, so a crashed/frozen script stops the boat.
+// Press F to toggle it off when driving by hand from the dashboard.
+const unsigned long SERIAL_TIMEOUT_MS = 300;
+static bool serialFailsafe = true;
+static unsigned long lastSerialCmd = 0;
+static unsigned long lastThrust = 0;
+
 static int leftSpeed = 0;
 static int rightSpeed = 0;
 static String inputBuf;                    // characters typed so far (shown on screen)
@@ -53,7 +61,12 @@ volatile uint32_t sendOk = 0;
 volatile uint32_t sendFail = 0;
 volatile unsigned long lastAckMs = 0;
 
+// Arduino core 3.3+ (ESP-IDF 5.5) changed the send-callback signature; support both
+#if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 3, 0)
+void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
+#else
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+#endif
   // Count results instead of printing, so the dashboard isn't flooded
   if (status == ESP_NOW_SEND_SUCCESS) {
     sendOk++;
@@ -131,11 +144,24 @@ void setup() {
   statusMsg = "Peer registered - ready";
 }
 
+void sendSpeedCommand() {
+  struct_message msg;
+  msg.id = 1;
+  msg.leftSpeed = leftSpeed;
+  msg.rightSpeed = rightSpeed;
+  esp_now_send(broadcastAddress, (uint8_t *)&msg, sizeof(msg));
+  lastThrust = millis();
+}
+
 void setSpeeds(int left, int right) {
   leftSpeed = constrain(left, -255, 255);
   rightSpeed = constrain(right, -255, 255);
   statusMsg = "Set L=" + String(leftSpeed) + " R=" + String(rightSpeed);
   uiDirty = true;
+
+  // forward new commands right away instead of waiting for the next 100 ms tick
+  lastSerialCmd = millis();
+  sendSpeedCommand();
 }
 
 // Parse a typed line: "value" for both motors, or "left right"
@@ -184,6 +210,10 @@ void handleKey(char c) {
       inputBuf = "";
       setSpeeds(0, 0);
       statusMsg = "STOP";
+      break;
+    case 'f': case 'F':
+      serialFailsafe = !serialFailsafe;
+      statusMsg = serialFailsafe ? "Serial failsafe ON" : "Serial failsafe OFF";
       break;
     default:
       if ((isDigit(c) || c == '-' || c == '+' || c == ' ') && inputBuf.length() < 16) {
@@ -239,6 +269,8 @@ void drawUI() {
   Serial.print(EOL);
   Serial.printf("Type \"value\" (both) or \"left right\" + Enter   (-255..255)%s", EOL);
   Serial.printf("W/S or Up/Down: both +/-%d   A/D or Left/Right: turn   X: STOP%s", SPEED_STEP, EOL);
+  Serial.printf("F: serial failsafe (%lu ms) is %s%s", SERIAL_TIMEOUT_MS,
+                serialFailsafe ? "\x1b[32mON\x1b[0m" : "\x1b[33mOFF\x1b[0m", EOL);
   Serial.print(EOL);
   Serial.printf("> %s_%s", inputBuf.c_str(), EOL);
   Serial.print("\x1b[J");  // clear anything below
@@ -260,15 +292,16 @@ void loop() {
     handleKey((char)Serial.read());
   }
 
-  // Send thrust commands at regular interval (100ms)
-  static unsigned long lastThrust = 0;
+  // Serial-silence failsafe: stop the motors if the PC stops sending
+  if (serialFailsafe && (leftSpeed != 0 || rightSpeed != 0) &&
+      millis() - lastSerialCmd > SERIAL_TIMEOUT_MS) {
+    setSpeeds(0, 0);
+    statusMsg = "FAILSAFE: no serial command for " + String(SERIAL_TIMEOUT_MS) + " ms - motors set to 0";
+  }
+
+  // Keep re-sending the current command every 100 ms (receiver failsafe triggers after 1 s of silence)
   if (millis() - lastThrust > 100) {
-    struct_message msg;
-    msg.id = 1;
-    msg.leftSpeed = leftSpeed;
-    msg.rightSpeed = rightSpeed;
-    esp_now_send(broadcastAddress, (uint8_t *)&msg, sizeof(msg));
-    lastThrust = millis();
+    sendSpeedCommand();
   }
 
   // Redraw on a timer (for link stats) or immediately after a keypress
