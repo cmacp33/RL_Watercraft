@@ -30,7 +30,8 @@ esp_now_peer_info_t peerInfo;
 const int ledPin = 0;  
 const int LEFT_MOTOR_PIN = 4;
 const int RIGHT_MOTOR_PIN = 5;
-const int ESC_FREQ = 50;         // 50 Hz for ESC
+const int ESC_FREQ = 50;         // PWM frequency for ESC (standard is 50 Hz; lower = longer gap between pulses)
+const long ESC_PERIOD_US = 1000000L / ESC_FREQ;  // 20000 us at 50 Hz
 const int ESC_RESOLUTION = 14;   // 14-bit PWM (max supported on ESP32-S3)
 const int LEFT_CHANNEL = 0;
 const int RIGHT_CHANNEL = 1;
@@ -49,8 +50,15 @@ volatile bool failsafeActive = true;
 // The ESCs lock up if they go straight from forward to reverse (or back). They need
 // a pulse in the new direction, then neutral, then the new direction again:
 //   +20 -> -20 (REVERSE_BRAKE_MS) -> 0 (REVERSE_NEUTRAL_MS) -> -20
-const unsigned long REVERSE_BRAKE_MS = 500;
-const unsigned long REVERSE_NEUTRAL_MS = 500;
+const unsigned long REVERSE_BRAKE_MS = 50;
+const unsigned long REVERSE_NEUTRAL_MS = 50;
+
+// Static friction: from a stop the motors need a kick of START_KICK_SPEED to get
+// moving. Starting commands below START_KICK_SPEED run at START_KICK_SPEED for
+// START_KICK_MS first. Any command between -MIN_RUN_SPEED and +MIN_RUN_SPEED is a stop.
+const int START_KICK_SPEED = 50;
+const int MIN_RUN_SPEED = 30;
+const unsigned long START_KICK_MS = 150;
 
 // Requested speeds from the latest command (written from ESP-NOW callback)
 volatile int targetLeft = 0;
@@ -66,10 +74,12 @@ struct MotorState {
   ReversePhase phase;
   int seqDir;                 // direction being switched to during a sequence
   unsigned long phaseStart;
+  int kickDir;                // direction of the start kick in progress, 0 = none
+  unsigned long kickStart;
 };
 
-MotorState leftMotor = {LEFT_CHANNEL, 0, 0, PHASE_RUN, 0, 0};
-MotorState rightMotor = {RIGHT_CHANNEL, 0, 0, PHASE_RUN, 0, 0};
+MotorState leftMotor = {LEFT_CHANNEL, 0, 0, PHASE_RUN, 0, 0, 0, 0};
+MotorState rightMotor = {RIGHT_CHANNEL, 0, 0, PHASE_RUN, 0, 0, 0, 0};
 
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.print("\r\nLast Packet Send Status:\t");
@@ -94,17 +104,43 @@ void setMotorSpeed(int channel, int speed) {
   }
   
   // Convert microseconds to duty cycle for 14-bit resolution at 50Hz
-  // 50Hz = 20000us period, 14-bit = 16384 steps
-  // dutyCycle = (pulseWidth / 20000) * (1 << ESC_RESOLUTION)
-  int dutyCycle = (pulseWidth * (1 << ESC_RESOLUTION)) / 20000;
+  // dutyCycle = (pulseWidth / ESC_PERIOD_US) * (1 << ESC_RESOLUTION)
+  int dutyCycle = (pulseWidth * (1L << ESC_RESOLUTION)) / ESC_PERIOD_US;
   
   ledcWriteChannel(channel, dutyCycle);
+}
+
+// Adjust an output for static friction when the motor starts from a stop
+int applyStartAssist(MotorState &m, int output, unsigned long now) {
+  int mag = abs(output);
+  int dir = (output > 0) - (output < 0);
+
+  // Kick in progress: hold it unless the command stopped, changed direction or rose above the kick
+  if (m.kickDir != 0) {
+    if (dir == m.kickDir && mag < START_KICK_SPEED && now - m.kickStart < START_KICK_MS) {
+      return dir * START_KICK_SPEED;
+    }
+    m.kickDir = 0;
+    return output;
+  }
+
+  // Starting from a stop
+  if (m.applied == 0 && mag > 0) {
+    if (mag < START_KICK_SPEED) {
+      m.kickDir = dir;
+      m.kickStart = now;
+      Serial.printf("[KICK ch%d] %lu ms: %d -> %d\n", m.channel, now, dir * START_KICK_SPEED, output);
+      return dir * START_KICK_SPEED;
+    }
+  }
+  return output;
 }
 
 // Drive a motor toward the target speed, running the brake/neutral/reverse
 // sequence whenever the direction changes
 void updateMotor(MotorState &m, int target) {
   target = constrain(target, -255, 255);
+  if (abs(target) < MIN_RUN_SPEED) target = 0;  // too slow to turn the motor: treat as stop
   int dir = (target > 0) - (target < 0);
   unsigned long now = millis();
 
@@ -139,8 +175,11 @@ void updateMotor(MotorState &m, int target) {
       output = target;
       Serial.printf("[REVERSE ch%d] %lu ms: engaged %d\n", m.channel, now, target);
     }
-  } else if (dir != 0) {
-    m.lastDir = dir;
+  }
+
+  if (m.phase == PHASE_RUN) {
+    output = applyStartAssist(m, output, now);
+    if (output != 0) m.lastDir = (output > 0) ? 1 : -1;
   }
 
   if (output == m.applied) return;
@@ -212,12 +251,12 @@ void setup() {
   Serial.print(LEFT_MOTOR_PIN);
   Serial.print(") - Channel ");
   Serial.print(LEFT_CHANNEL);
-  Serial.println(", 50 Hz, 14-bit");
+  Serial.printf(", %d Hz, %d-bit\n", ESC_FREQ, ESC_RESOLUTION);
   Serial.print("  Right Motor (Pin ");
   Serial.print(RIGHT_MOTOR_PIN);
   Serial.print(") - Channel ");
   Serial.print(RIGHT_CHANNEL);
-  Serial.println(", 50 Hz, 14-bit");
+  Serial.printf(", %d Hz, %d-bit\n", ESC_FREQ, ESC_RESOLUTION);
   
   ledcAttachChannel(LEFT_MOTOR_PIN, ESC_FREQ, ESC_RESOLUTION, LEFT_CHANNEL);
   ledcAttachChannel(RIGHT_MOTOR_PIN, ESC_FREQ, ESC_RESOLUTION, RIGHT_CHANNEL);
