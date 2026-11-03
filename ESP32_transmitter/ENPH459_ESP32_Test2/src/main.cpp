@@ -36,10 +36,6 @@ const int resolution = 8;
 
 static uint32_t heartbeat_counter = 0;
 
-<<<<<<< HEAD
-void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
-  const uint8_t *mac_addr = tx_info->des_addr;
-=======
 // Failsafe: if no serial command line arrives for this long, command both motors to 0.
 // The PC control loop sends every 100 ms, so a crashed/frozen script stops the boat.
 // Set to 0 to disable (e.g. typing commands by hand in the serial monitor).
@@ -68,8 +64,8 @@ void sendSpeedCommand() {
   lastThrust = millis();
 }
 
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
->>>>>>> 29e9d75684341102f293ec017698277cb8d97497
+void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
+  const uint8_t *mac_addr = tx_info->des_addr;
   char macStr[18];
   snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
            mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
