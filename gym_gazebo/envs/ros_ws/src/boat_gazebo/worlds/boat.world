@@ -37,7 +37,10 @@
 
       <max_step_size>0.004</max_step_size>
       <real_time_factor>1</real_time_factor>
-      <real_time_update_rate>250</real_time_update_rate>
+      <!-- physics steps per wall-clock second; x max_step_size (0.004) = speed vs real time.
+           250 = real time, 2500 = up to 10x, 0 = as fast as the CPU allows.
+           Check the 'sim step' time printed by training stays near 0.10 s when raising this. -->
+      <real_time_update_rate>2500</real_time_update_rate>
       <magnetic_field>6.0e-6 2.3e-5 -4.2e-5</magnetic_field>
     </physics>
 

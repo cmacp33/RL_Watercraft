@@ -27,10 +27,10 @@ struct_message command;
 esp_now_peer_info_t peerInfo;
 
 const int ledPin = 0;  
-const int LEFT_MOTOR_PIN = 2;
+const int LEFT_MOTOR_PIN = 4;
 const int RIGHT_MOTOR_PIN = 5;
 const int ESC_FREQ = 50;         // 50 Hz for ESC
-const int ESC_RESOLUTION = 16;   // 16-bit PWM for fine control
+const int ESC_RESOLUTION = 14;   // 14-bit PWM (max supported on ESP32-S3)
 const int LEFT_CHANNEL = 0;
 const int RIGHT_CHANNEL = 1;
 
@@ -38,6 +38,31 @@ const int RIGHT_CHANNEL = 1;
 const int ESC_MIN_PULSE = 1000;   // 1ms = full reverse
 const int ESC_MID_PULSE = 1500;   // 1.5ms = neutral/stop
 const int ESC_MAX_PULSE = 2000;   // 2ms = full forward
+
+// Failsafe: stop motors if no speed command arrives within this window
+// (transmitter sends one every ~100 ms)
+const unsigned long COMMAND_TIMEOUT_MS = 1000;
+volatile unsigned long lastCommandTime = 0;  // written from ESP-NOW callback
+volatile bool failsafeActive = true;
+
+// Latest commanded speeds. The ESP-NOW callback only stores them; loop() applies them
+// so the reverse-neutral logic below runs in one place.
+volatile int targetLeft = 0;
+volatile int targetRight = 0;
+
+// These ESCs only accept reverse after sitting at neutral following forward thrust.
+// When a command goes from forward to reverse, output neutral for this long first.
+// Tune on the bench: shortest value where reverse engages reliably.
+const unsigned long REVERSE_NEUTRAL_MS = 150;
+
+struct MotorState {
+  int channel;
+  const char *name;
+  unsigned long lastForwardMs;  // last time this motor was driven forward
+  bool holding;                 // currently forcing neutral before reverse
+};
+MotorState leftMotor = {LEFT_CHANNEL, "Left", 0, false};
+MotorState rightMotor = {RIGHT_CHANNEL, "Right", 0, false};
 
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.print("\r\nLast Packet Send Status:\t");
@@ -61,12 +86,32 @@ void setMotorSpeed(int channel, int speed) {
     pulseWidth = ESC_MID_PULSE + (speed * (ESC_MAX_PULSE - ESC_MID_PULSE)) / 255;
   }
   
-  // Convert microseconds to duty cycle for 16-bit resolution at 50Hz
-  // 50Hz = 20000us period, 16-bit = 65536 steps
-  // dutyCycle = (pulseWidth / 20000) * 65536
-  int dutyCycle = (pulseWidth * 65536) / 20000;
+  // Convert microseconds to duty cycle for 14-bit resolution at 50Hz
+  // 50Hz = 20000us period, 14-bit = 16384 steps
+  // dutyCycle = (pulseWidth / 20000) * (1 << ESC_RESOLUTION)
+  int dutyCycle = (pulseWidth * (1 << ESC_RESOLUTION)) / 20000;
   
   ledcWrite(channel, dutyCycle);
+}
+
+// Apply a target speed, inserting neutral before reverse when the ESC needs it
+void applyMotor(MotorState &m, int target) {
+  unsigned long now = millis();
+  int output = target;
+  if (target < 0 && now - m.lastForwardMs < REVERSE_NEUTRAL_MS) {
+    output = 0;  // still within the neutral window after forward thrust
+    if (!m.holding) {
+      Serial.print("[REVERSE] "); Serial.print(m.name);
+      Serial.print(" holding neutral "); Serial.print(REVERSE_NEUTRAL_MS); Serial.println(" ms before reverse");
+    }
+    m.holding = true;
+  } else {
+    m.holding = false;
+  }
+  if (output > 0) {
+    m.lastForwardMs = now;
+  }
+  setMotorSpeed(m.channel, output);
 }
 
 // Callback when data is received
@@ -96,11 +141,11 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     Serial.print(" Right: ");
     Serial.println(cmd.rightSpeed);
     
-    // Set motor speeds using proper ESC control
-    setMotorSpeed(LEFT_CHANNEL, cmd.leftSpeed);
-    setMotorSpeed(RIGHT_CHANNEL, cmd.rightSpeed);
-    
-    Serial.println("Motors updated!");
+    // loop() applies these (with the neutral-before-reverse hold)
+    targetLeft = constrain(cmd.leftSpeed, -255, 255);
+    targetRight = constrain(cmd.rightSpeed, -255, 255);
+    lastCommandTime = millis();
+    failsafeActive = false;
     return;
   }
   
@@ -131,12 +176,12 @@ void setup() {
   Serial.print(LEFT_MOTOR_PIN);
   Serial.print(") - Channel ");
   Serial.print(LEFT_CHANNEL);
-  Serial.println(", 50 Hz, 16-bit");
+  Serial.println(", 50 Hz, 14-bit");
   Serial.print("  Right Motor (Pin ");
   Serial.print(RIGHT_MOTOR_PIN);
   Serial.print(") - Channel ");
   Serial.print(RIGHT_CHANNEL);
-  Serial.println(", 50 Hz, 16-bit");
+  Serial.println(", 50 Hz, 14-bit");
   
   ledcSetup(LEFT_CHANNEL, ESC_FREQ, ESC_RESOLUTION);
   ledcSetup(RIGHT_CHANNEL, ESC_FREQ, ESC_RESOLUTION);
@@ -174,12 +219,20 @@ void setup() {
 }
 
 void loop() {
-  // Monitor heap memory and re-register peer periodically
+  // Monitor heap memory and enforce the command-timeout failsafe
   static unsigned long lastHeapCheck = 0;
-  static unsigned long lastPeerRefresh = 0;
-  
+
   unsigned long now = millis();
-  
+
+  // Failsafe: return motors to neutral if the transmitter goes silent
+  unsigned long lastCmd = lastCommandTime;  // snapshot before reading millis()
+  if (!failsafeActive && millis() - lastCmd > COMMAND_TIMEOUT_MS) {
+    targetLeft = 0;
+    targetRight = 0;
+    failsafeActive = true;
+    Serial.println("[FAILSAFE] No speed command received - motors set to neutral");
+  }
+
   // Print heap memory every 10 seconds (diagnostic)
   if (now - lastHeapCheck > 10000) {
     uint32_t freeHeap = ESP.getFreeHeap();
@@ -193,29 +246,10 @@ void loop() {
     lastHeapCheck = now;
   }
   
-  // Re-register peer every 30 seconds to keep connection fresh
-  if (now - lastPeerRefresh > 30000) {
-    Serial.println("[PEER REFRESH] Re-registering peer...");
-    
-    // Remove old peer if it exists
-    esp_now_del_peer(broadcastAddress);
-    delay(100);
-    
-    // Re-add peer
-    esp_now_peer_info_t peerInfo = {};
-    memcpy(peerInfo.peer_addr, broadcastAddress, 6);
-    peerInfo.channel = 0;
-    peerInfo.encrypt = false;
-    
-    if (esp_now_add_peer(&peerInfo) == ESP_OK) {
-      Serial.println("[PEER REFRESH] Peer re-registered successfully");
-    } else {
-      Serial.println("[ERROR] Failed to re-register peer!");
-    }
-    lastPeerRefresh = now;
-  }
-  
-  delay(100);
+  applyMotor(leftMotor, targetLeft);
+  applyMotor(rightMotor, targetRight);
+
+  delay(10);
 }
 
 

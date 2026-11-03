@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
-  "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libHydrodynamics.pdb"
-  "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libHydrodynamics.so"
+  "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libHydrodynamics.pdb"
+  "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libHydrodynamics.so"
   "CMakeFiles/Hydrodynamics.dir/src/Gazebo.cc.o"
   "CMakeFiles/Hydrodynamics.dir/src/Gazebo.cc.o.d"
   "CMakeFiles/Hydrodynamics.dir/src/Geometry.cc.o"

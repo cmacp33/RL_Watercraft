@@ -57,10 +57,10 @@ RM = /home/fizzer/.local/lib/python3.8/site-packages/cmake/data/bin/cmake -E rm 
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src
+CMAKE_SOURCE_DIR = /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build
+CMAKE_BINARY_DIR = /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -142,14 +142,14 @@ install/strip/fast: preinstall/fast
 
 # The main all target
 all: cmake_check_build_system
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/CMakeFiles /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins//CMakeFiles/progress.marks
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/CMakeFiles 0
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/CMakeFiles /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins//CMakeFiles/progress.marks
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/clean
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/clean
 .PHONY : clean
 
 # The main clean target
@@ -158,22 +158,22 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/preinstall
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/preinstall
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Convenience name for target.
 usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/rule:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/rule
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/rule
 .PHONY : usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/rule
 
 # Convenience name for target.
@@ -182,12 +182,12 @@ usv_gazebo_plugins_xacro_generated_to_devel_space_: usv_gazebo_plugins/CMakeFile
 
 # fast build rule for target.
 usv_gazebo_plugins_xacro_generated_to_devel_space_/fast:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/build
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/build
 .PHONY : usv_gazebo_plugins_xacro_generated_to_devel_space_/fast
 
 # Convenience name for target.
 usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/rule:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/rule
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/rule
 .PHONY : usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/rule
 
 # Convenience name for target.
@@ -196,12 +196,12 @@ buoyancy_gazebo_plugin: usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir
 
 # fast build rule for target.
 buoyancy_gazebo_plugin/fast:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build
 .PHONY : buoyancy_gazebo_plugin/fast
 
 # Convenience name for target.
 usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/rule:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/rule
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/rule
 .PHONY : usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/rule
 
 # Convenience name for target.
@@ -210,12 +210,12 @@ usv_gazebo_dynamics_plugin: usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_pl
 
 # fast build rule for target.
 usv_gazebo_dynamics_plugin/fast:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/build
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/build
 .PHONY : usv_gazebo_dynamics_plugin/fast
 
 # Convenience name for target.
 usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/rule:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/rule
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/rule
 .PHONY : usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/rule
 
 # Convenience name for target.
@@ -224,12 +224,12 @@ usv_gazebo_thrust_plugin: usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin
 
 # fast build rule for target.
 usv_gazebo_thrust_plugin/fast:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/build
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/build
 .PHONY : usv_gazebo_thrust_plugin/fast
 
 # Convenience name for target.
 usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/rule:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/rule
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/rule
 .PHONY : usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/rule
 
 # Convenience name for target.
@@ -238,12 +238,12 @@ usv_gazebo_wind_plugin: usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir
 
 # fast build rule for target.
 usv_gazebo_wind_plugin/fast:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/build
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/build
 .PHONY : usv_gazebo_wind_plugin/fast
 
 # Convenience name for target.
 usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/rule:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/rule
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/rule
 .PHONY : usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/rule
 
 # Convenience name for target.
@@ -252,12 +252,12 @@ usv_gazebo_plugins__xacro_auto_generate: usv_gazebo_plugins/CMakeFiles/usv_gazeb
 
 # fast build rule for target.
 usv_gazebo_plugins__xacro_auto_generate/fast:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/build
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate.dir/build
 .PHONY : usv_gazebo_plugins__xacro_auto_generate/fast
 
 # Convenience name for target.
 usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate_to_devel_space_.dir/rule:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate_to_devel_space_.dir/rule
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate_to_devel_space_.dir/rule
 .PHONY : usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate_to_devel_space_.dir/rule
 
 # Convenience name for target.
@@ -266,12 +266,12 @@ usv_gazebo_plugins__xacro_auto_generate_to_devel_space_: usv_gazebo_plugins/CMak
 
 # fast build rule for target.
 usv_gazebo_plugins__xacro_auto_generate_to_devel_space_/fast:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate_to_devel_space_.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate_to_devel_space_.dir/build
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate_to_devel_space_.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins__xacro_auto_generate_to_devel_space_.dir/build
 .PHONY : usv_gazebo_plugins__xacro_auto_generate_to_devel_space_/fast
 
 # Convenience name for target.
 usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/rule:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/rule
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/rule
 .PHONY : usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/rule
 
 # Convenience name for target.
@@ -280,12 +280,12 @@ buoyancy_plugin_test: usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/rul
 
 # fast build rule for target.
 buoyancy_plugin_test/fast:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/build
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/build
 .PHONY : buoyancy_plugin_test/fast
 
 # Convenience name for target.
 usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins.dir/rule:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins.dir/rule
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins.dir/rule
 .PHONY : usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins.dir/rule
 
 # Convenience name for target.
@@ -294,12 +294,12 @@ run_tests_usv_gazebo_plugins: usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo
 
 # fast build rule for target.
 run_tests_usv_gazebo_plugins/fast:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins.dir/build.make usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins.dir/build
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins.dir/build.make usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins.dir/build
 .PHONY : run_tests_usv_gazebo_plugins/fast
 
 # Convenience name for target.
 usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins.dir/rule:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins.dir/rule
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins.dir/rule
 .PHONY : usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins.dir/rule
 
 # Convenience name for target.
@@ -308,12 +308,12 @@ _run_tests_usv_gazebo_plugins: usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gaze
 
 # fast build rule for target.
 _run_tests_usv_gazebo_plugins/fast:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins.dir/build.make usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins.dir/build
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins.dir/build.make usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins.dir/build
 .PHONY : _run_tests_usv_gazebo_plugins/fast
 
 # Convenience name for target.
 usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins_gtest.dir/rule:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins_gtest.dir/rule
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins_gtest.dir/rule
 .PHONY : usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins_gtest.dir/rule
 
 # Convenience name for target.
@@ -322,12 +322,12 @@ run_tests_usv_gazebo_plugins_gtest: usv_gazebo_plugins/CMakeFiles/run_tests_usv_
 
 # fast build rule for target.
 run_tests_usv_gazebo_plugins_gtest/fast:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins_gtest.dir/build.make usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins_gtest.dir/build
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins_gtest.dir/build.make usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins_gtest.dir/build
 .PHONY : run_tests_usv_gazebo_plugins_gtest/fast
 
 # Convenience name for target.
 usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins_gtest.dir/rule:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins_gtest.dir/rule
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins_gtest.dir/rule
 .PHONY : usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins_gtest.dir/rule
 
 # Convenience name for target.
@@ -336,12 +336,12 @@ _run_tests_usv_gazebo_plugins_gtest: usv_gazebo_plugins/CMakeFiles/_run_tests_us
 
 # fast build rule for target.
 _run_tests_usv_gazebo_plugins_gtest/fast:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins_gtest.dir/build.make usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins_gtest.dir/build
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins_gtest.dir/build.make usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins_gtest.dir/build
 .PHONY : _run_tests_usv_gazebo_plugins_gtest/fast
 
 # Convenience name for target.
 usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test.dir/rule:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test.dir/rule
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test.dir/rule
 .PHONY : usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test.dir/rule
 
 # Convenience name for target.
@@ -350,12 +350,12 @@ run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test: usv_gazebo_plugins/CMak
 
 # fast build rule for target.
 run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test/fast:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test.dir/build.make usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test.dir/build
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test.dir/build.make usv_gazebo_plugins/CMakeFiles/run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test.dir/build
 .PHONY : run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test/fast
 
 # Convenience name for target.
 usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test.dir/rule:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test.dir/rule
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test.dir/rule
 .PHONY : usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test.dir/rule
 
 # Convenience name for target.
@@ -364,12 +364,12 @@ _run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test: usv_gazebo_plugins/CMa
 
 # fast build rule for target.
 _run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test/fast:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test.dir/build.make usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test.dir/build
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test.dir/build.make usv_gazebo_plugins/CMakeFiles/_run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test.dir/build
 .PHONY : _run_tests_usv_gazebo_plugins_gtest_buoyancy_plugin_test/fast
 
 # Convenience name for target.
 usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/rule:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/rule
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/rule
 .PHONY : usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/rule
 
 # Convenience name for target.
@@ -378,7 +378,7 @@ clean_test_results_usv_gazebo_plugins: usv_gazebo_plugins/CMakeFiles/clean_test_
 
 # fast build rule for target.
 clean_test_results_usv_gazebo_plugins/fast:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/build.make usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/build
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/build.make usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/build
 .PHONY : clean_test_results_usv_gazebo_plugins/fast
 
 src/buoyancy_gazebo_plugin.o: src/buoyancy_gazebo_plugin.cc.o
@@ -386,7 +386,7 @@ src/buoyancy_gazebo_plugin.o: src/buoyancy_gazebo_plugin.cc.o
 
 # target to build an object file
 src/buoyancy_gazebo_plugin.cc.o:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/buoyancy_gazebo_plugin.cc.o
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/buoyancy_gazebo_plugin.cc.o
 .PHONY : src/buoyancy_gazebo_plugin.cc.o
 
 src/buoyancy_gazebo_plugin.i: src/buoyancy_gazebo_plugin.cc.i
@@ -394,7 +394,7 @@ src/buoyancy_gazebo_plugin.i: src/buoyancy_gazebo_plugin.cc.i
 
 # target to preprocess a source file
 src/buoyancy_gazebo_plugin.cc.i:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/buoyancy_gazebo_plugin.cc.i
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/buoyancy_gazebo_plugin.cc.i
 .PHONY : src/buoyancy_gazebo_plugin.cc.i
 
 src/buoyancy_gazebo_plugin.s: src/buoyancy_gazebo_plugin.cc.s
@@ -402,7 +402,7 @@ src/buoyancy_gazebo_plugin.s: src/buoyancy_gazebo_plugin.cc.s
 
 # target to generate assembly for a file
 src/buoyancy_gazebo_plugin.cc.s:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/buoyancy_gazebo_plugin.cc.s
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/buoyancy_gazebo_plugin.cc.s
 .PHONY : src/buoyancy_gazebo_plugin.cc.s
 
 src/polyhedron_volume.o: src/polyhedron_volume.cc.o
@@ -410,7 +410,7 @@ src/polyhedron_volume.o: src/polyhedron_volume.cc.o
 
 # target to build an object file
 src/polyhedron_volume.cc.o:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/polyhedron_volume.cc.o
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/polyhedron_volume.cc.o
 .PHONY : src/polyhedron_volume.cc.o
 
 src/polyhedron_volume.i: src/polyhedron_volume.cc.i
@@ -418,7 +418,7 @@ src/polyhedron_volume.i: src/polyhedron_volume.cc.i
 
 # target to preprocess a source file
 src/polyhedron_volume.cc.i:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/polyhedron_volume.cc.i
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/polyhedron_volume.cc.i
 .PHONY : src/polyhedron_volume.cc.i
 
 src/polyhedron_volume.s: src/polyhedron_volume.cc.s
@@ -426,7 +426,7 @@ src/polyhedron_volume.s: src/polyhedron_volume.cc.s
 
 # target to generate assembly for a file
 src/polyhedron_volume.cc.s:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/polyhedron_volume.cc.s
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/polyhedron_volume.cc.s
 .PHONY : src/polyhedron_volume.cc.s
 
 src/shape_volume.o: src/shape_volume.cc.o
@@ -434,7 +434,7 @@ src/shape_volume.o: src/shape_volume.cc.o
 
 # target to build an object file
 src/shape_volume.cc.o:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/shape_volume.cc.o
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/shape_volume.cc.o
 .PHONY : src/shape_volume.cc.o
 
 src/shape_volume.i: src/shape_volume.cc.i
@@ -442,7 +442,7 @@ src/shape_volume.i: src/shape_volume.cc.i
 
 # target to preprocess a source file
 src/shape_volume.cc.i:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/shape_volume.cc.i
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/shape_volume.cc.i
 .PHONY : src/shape_volume.cc.i
 
 src/shape_volume.s: src/shape_volume.cc.s
@@ -450,7 +450,7 @@ src/shape_volume.s: src/shape_volume.cc.s
 
 # target to generate assembly for a file
 src/shape_volume.cc.s:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/shape_volume.cc.s
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_gazebo_plugin.dir/src/shape_volume.cc.s
 .PHONY : src/shape_volume.cc.s
 
 src/usv_gazebo_dynamics_plugin.o: src/usv_gazebo_dynamics_plugin.cc.o
@@ -458,7 +458,7 @@ src/usv_gazebo_dynamics_plugin.o: src/usv_gazebo_dynamics_plugin.cc.o
 
 # target to build an object file
 src/usv_gazebo_dynamics_plugin.cc.o:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/src/usv_gazebo_dynamics_plugin.cc.o
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/src/usv_gazebo_dynamics_plugin.cc.o
 .PHONY : src/usv_gazebo_dynamics_plugin.cc.o
 
 src/usv_gazebo_dynamics_plugin.i: src/usv_gazebo_dynamics_plugin.cc.i
@@ -466,7 +466,7 @@ src/usv_gazebo_dynamics_plugin.i: src/usv_gazebo_dynamics_plugin.cc.i
 
 # target to preprocess a source file
 src/usv_gazebo_dynamics_plugin.cc.i:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/src/usv_gazebo_dynamics_plugin.cc.i
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/src/usv_gazebo_dynamics_plugin.cc.i
 .PHONY : src/usv_gazebo_dynamics_plugin.cc.i
 
 src/usv_gazebo_dynamics_plugin.s: src/usv_gazebo_dynamics_plugin.cc.s
@@ -474,7 +474,7 @@ src/usv_gazebo_dynamics_plugin.s: src/usv_gazebo_dynamics_plugin.cc.s
 
 # target to generate assembly for a file
 src/usv_gazebo_dynamics_plugin.cc.s:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/src/usv_gazebo_dynamics_plugin.cc.s
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_dynamics_plugin.dir/src/usv_gazebo_dynamics_plugin.cc.s
 .PHONY : src/usv_gazebo_dynamics_plugin.cc.s
 
 src/usv_gazebo_thrust_plugin.o: src/usv_gazebo_thrust_plugin.cc.o
@@ -482,7 +482,7 @@ src/usv_gazebo_thrust_plugin.o: src/usv_gazebo_thrust_plugin.cc.o
 
 # target to build an object file
 src/usv_gazebo_thrust_plugin.cc.o:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/src/usv_gazebo_thrust_plugin.cc.o
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/src/usv_gazebo_thrust_plugin.cc.o
 .PHONY : src/usv_gazebo_thrust_plugin.cc.o
 
 src/usv_gazebo_thrust_plugin.i: src/usv_gazebo_thrust_plugin.cc.i
@@ -490,7 +490,7 @@ src/usv_gazebo_thrust_plugin.i: src/usv_gazebo_thrust_plugin.cc.i
 
 # target to preprocess a source file
 src/usv_gazebo_thrust_plugin.cc.i:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/src/usv_gazebo_thrust_plugin.cc.i
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/src/usv_gazebo_thrust_plugin.cc.i
 .PHONY : src/usv_gazebo_thrust_plugin.cc.i
 
 src/usv_gazebo_thrust_plugin.s: src/usv_gazebo_thrust_plugin.cc.s
@@ -498,7 +498,7 @@ src/usv_gazebo_thrust_plugin.s: src/usv_gazebo_thrust_plugin.cc.s
 
 # target to generate assembly for a file
 src/usv_gazebo_thrust_plugin.cc.s:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/src/usv_gazebo_thrust_plugin.cc.s
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_thrust_plugin.dir/src/usv_gazebo_thrust_plugin.cc.s
 .PHONY : src/usv_gazebo_thrust_plugin.cc.s
 
 src/usv_gazebo_wind_plugin.o: src/usv_gazebo_wind_plugin.cc.o
@@ -506,7 +506,7 @@ src/usv_gazebo_wind_plugin.o: src/usv_gazebo_wind_plugin.cc.o
 
 # target to build an object file
 src/usv_gazebo_wind_plugin.cc.o:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/src/usv_gazebo_wind_plugin.cc.o
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/src/usv_gazebo_wind_plugin.cc.o
 .PHONY : src/usv_gazebo_wind_plugin.cc.o
 
 src/usv_gazebo_wind_plugin.i: src/usv_gazebo_wind_plugin.cc.i
@@ -514,7 +514,7 @@ src/usv_gazebo_wind_plugin.i: src/usv_gazebo_wind_plugin.cc.i
 
 # target to preprocess a source file
 src/usv_gazebo_wind_plugin.cc.i:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/src/usv_gazebo_wind_plugin.cc.i
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/src/usv_gazebo_wind_plugin.cc.i
 .PHONY : src/usv_gazebo_wind_plugin.cc.i
 
 src/usv_gazebo_wind_plugin.s: src/usv_gazebo_wind_plugin.cc.s
@@ -522,7 +522,7 @@ src/usv_gazebo_wind_plugin.s: src/usv_gazebo_wind_plugin.cc.s
 
 # target to generate assembly for a file
 src/usv_gazebo_wind_plugin.cc.s:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/src/usv_gazebo_wind_plugin.cc.s
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/build.make usv_gazebo_plugins/CMakeFiles/usv_gazebo_wind_plugin.dir/src/usv_gazebo_wind_plugin.cc.s
 .PHONY : src/usv_gazebo_wind_plugin.cc.s
 
 test/buoyancy_test.o: test/buoyancy_test.cc.o
@@ -530,7 +530,7 @@ test/buoyancy_test.o: test/buoyancy_test.cc.o
 
 # target to build an object file
 test/buoyancy_test.cc.o:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/test/buoyancy_test.cc.o
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/test/buoyancy_test.cc.o
 .PHONY : test/buoyancy_test.cc.o
 
 test/buoyancy_test.i: test/buoyancy_test.cc.i
@@ -538,7 +538,7 @@ test/buoyancy_test.i: test/buoyancy_test.cc.i
 
 # target to preprocess a source file
 test/buoyancy_test.cc.i:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/test/buoyancy_test.cc.i
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/test/buoyancy_test.cc.i
 .PHONY : test/buoyancy_test.cc.i
 
 test/buoyancy_test.s: test/buoyancy_test.cc.s
@@ -546,7 +546,7 @@ test/buoyancy_test.s: test/buoyancy_test.cc.s
 
 # target to generate assembly for a file
 test/buoyancy_test.cc.s:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/test/buoyancy_test.cc.s
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(MAKE) $(MAKESILENT) -f usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/build.make usv_gazebo_plugins/CMakeFiles/buoyancy_plugin_test.dir/test/buoyancy_test.cc.s
 .PHONY : test/buoyancy_test.cc.s
 
 # Help Target
@@ -609,6 +609,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

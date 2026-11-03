@@ -53,10 +53,10 @@ RM = /home/fizzer/.local/lib/python3.8/site-packages/cmake/data/bin/cmake -E rm 
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src
+CMAKE_SOURCE_DIR = /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build
+CMAKE_BINARY_DIR = /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build
 
 # Utility rule file for usv_gazebo_plugins_xacro_generated_to_devel_space_.
 
@@ -77,10 +77,10 @@ usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_
 .PHONY : usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/build
 
 usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/clean:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins && $(CMAKE_COMMAND) -P CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/cmake_clean.cmake
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins && $(CMAKE_COMMAND) -P CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/cmake_clean.cmake
 .PHONY : usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/clean
 
 usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/depend:
-	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src/usv_gazebo_plugins /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src/usv_gazebo_plugins /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : usv_gazebo_plugins/CMakeFiles/usv_gazebo_plugins_xacro_generated_to_devel_space_.dir/depend
 
