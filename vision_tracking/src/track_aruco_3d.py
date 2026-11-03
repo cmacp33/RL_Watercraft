@@ -1,4 +1,5 @@
-"""Measure a rectangle from four known-size ArUco markers.
+"""
+Measure a rectangle from four known-size ArUco markers.
 
 IDs: 0 bottom-left, 1 bottom-right, 2 top-right, 3 top-left.
 Place markers on one flat plane. Width/height are distances between marker
@@ -8,12 +9,36 @@ Camera coordinates follow OpenCV: X right, Y down, Z away from the camera.
 All physical lengths and translation vectors are in meters.
 Only marker size and camera intrinsics provide metric scale; no rectangle
 width or height is assumed. The camera and rectangle must stay fixed after
-calibration; press R to recalibrate if either moves.
+calibration; press R to recalibrate if either moves. Press Q or Esc to quit.
 """
 from pathlib import Path
-import time
 import cv2
 import numpy as np
+import serial
+
+import sys
+import math
+import time
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from policy_contract import (NumpyPolicy, POSITION_SCALE_M, policy_observation,
+                             esp32_motor_action)
+
+# Serial and controller settings (no command-line arguments).
+SERIAL_PORT = '/dev/cu.usbserial-2140'
+BAUD_RATE = 115200
+CONTROL_PERIOD_S = 0.1
+DRY_RUN = False  # True: display commands without opening the serial port.
+CONTROLLER = 'policy'  # 'p': turn then drive; 'policy': trained network.
+POLICY_WEIGHTS = Path(__file__).resolve().parents[2] / 'runs/20261102-181000_300steps/best.npz'
+TARGET_XY_M = (0.0, 0.0)  # Rectangle-center frame: X ID0->ID1, Y ID0->ID3.
+STOP_DISTANCE_M = 0.08
+HEADING_TOL_DEG = 12.0
+FORWARD_CMD = 100
+TURN_CMD_MIN = 50
+TURN_CMD_MAX = 90
+TURN_KP = 1.0
+MAX_ACTION = 0.4
 
 CAM_INDEX = 0
 CORNER_IDS = (0, 1, 2, 3)
@@ -21,7 +46,7 @@ TARGET_ID = 4
 MARKER_LENGTH_M = 0.04
 N_CALIB_FRAMES = 20
 AXIS_LENGTH_M = 0.05
-POSE_PRINT_INTERVAL_S = 1.0
+PRINT_FULL_TRANSFORMS = False  # Enable verbose matrices each frame if needed.
 CALIB_FILE = Path(__file__).with_name('camera_calibration.npz')
 
 
@@ -217,14 +242,141 @@ def display_id4_rotation(vis, pose):
 
 
 def print_id4_pose(pose):
-    """Print orientation matrices and full transforms; translations are meters."""
+    """Report position and heading every frame; optionally include matrices."""
+    xyz = pose['position_origin_m']
     angle = pose['heading_angle_deg']
-    print('ID4 angle from origin +X: ' +
-          ('undefined (heading normal to plane)' if angle is None else f'{angle:+.2f} deg'))
-    for name in ('rotation_camera_from_id4', 'rotation_origin_from_id4',
-                 'T_camera_from_id4', 'T_origin_from_id4'):
-        print(f'{name}:')
-        print(np.array2string(pose[name], precision=5, suppress_small=True))
+    angle_text = 'undefined' if angle is None else f'{angle:+.2f} deg'
+    print(f'\rID4: X={xyz[0]:+.4f} Y={xyz[1]:+.4f} Z={xyz[2]:+.4f} m '
+          f'| angle from +X={angle_text}          ', end='', flush=True)
+    if PRINT_FULL_TRANSFORMS:
+        print()
+        for name in ('rotation_camera_from_id4', 'rotation_origin_from_id4',
+                     'T_camera_from_id4', 'T_origin_from_id4'):
+            print(f'{name}:')
+            print(np.array2string(pose[name], precision=5, suppress_small=True))
+
+
+def compute_motor_command_to_target(x_m, y_m, yaw_deg, target_xy_m=TARGET_XY_M):
+    """Return physical left/right controller requests and diagnostics.
+
+    These requests are normalized and calibrated before serial transmission.
+    Positive yaw turns from origin +X toward +Y. Marker +X must face the
+    boat's forward direction, as in track_aruco_v3.py.
+    """
+    dx, dy = np.asarray(target_xy_m, dtype=float) - [x_m, y_m]
+    distance_m = math.hypot(dx, dy)
+    target_heading_deg = math.degrees(math.atan2(dy, dx))
+    error_deg = (target_heading_deg - yaw_deg + 180.0) % 360.0 - 180.0
+    if distance_m <= STOP_DISTANCE_M:
+        left, right, mode = 0, 0, 'stop'
+    elif abs(error_deg) > HEADING_TOL_DEG:
+        turn = int(np.clip(TURN_KP * abs(error_deg), TURN_CMD_MIN, TURN_CMD_MAX))
+        left, right, mode = ((-turn, turn, 'turn_ccw') if error_deg > 0
+                             else (turn, -turn, 'turn_cw'))
+    else:
+        left, right, mode = FORWARD_CMD, FORWARD_CMD, 'forward'
+    return left, right, {'distance_m': distance_m,
+                         'heading_error_deg': error_deg, 'mode': mode}
+
+
+def send_motor_command(ser, motor_left, motor_right):
+    """Send calibrated ESP32 channels as newline-terminated ASCII integers."""
+    if ser is not None:
+        payload = f'{int(motor_left)} {int(motor_right)}\n'.encode('ascii')
+        written = ser.write(payload)
+        if written != len(payload):
+            raise serial.SerialException('Incomplete motor command write')
+
+
+def send_policy_action(ser, action):
+    """Apply shared v3 motor gains, deadband, limits, and channel swap."""
+    left, right = map(int, esp32_motor_action(action))
+    send_motor_command(ser, left, right)
+    return left, right
+
+
+def stop_motors(ser):
+    """Repeat the stop command before closing, even after a serial failure."""
+    if ser is None:
+        return
+    try:
+        for _ in range(3):
+            try:
+                send_motor_command(ser, 0, 0)
+            except (serial.SerialException, OSError) as error:
+                print(f'Failed to send motor stop: {error}')
+            time.sleep(0.05)
+    finally:
+        ser.close()
+
+
+class MotorController:
+    """Meter-based control with the same action/observation contract as v3.
+
+    Pose and goal stay in the centered rectangle frame. The policy receives
+    body-relative observations, so no bottom-left-origin offset is needed.
+    """
+    def __init__(self):
+        if CONTROLLER not in ('p', 'policy'):
+            raise ValueError("CONTROLLER must be 'p' or 'policy'")
+        if not 0 < MAX_ACTION <= 1 or CONTROL_PERIOD_S <= 0:
+            raise ValueError('MAX_ACTION must be in (0, 1] and control period positive')
+        if np.asarray(TARGET_XY_M).shape != (2,) or not np.isfinite(TARGET_XY_M).all():
+            raise ValueError('TARGET_XY_M must contain two finite meter coordinates')
+        if CONTROLLER == 'policy' and POLICY_WEIGHTS is None:
+            raise ValueError('Set POLICY_WEIGHTS to a policy .npz for CONTROLLER=policy')
+        self.policy = NumpyPolicy(POLICY_WEIGHTS) if CONTROLLER == 'policy' else None
+        self.previous_pose = None
+        self.last_control = float('-inf')
+        self.channels = (0, 0)
+        self.mode = 'calibration -> stop'
+
+    def reset(self, ser):
+        self.previous_pose = None
+        self.last_control = float('-inf')
+        self.channels = send_policy_action(ser, np.zeros(2))
+        self.mode = 'recalibration -> stop'
+
+    def update(self, ser, pose, calibrated, now):
+        """Use the current frame only; resend commands every control tick."""
+        valid = (calibrated and pose is not None and
+                 pose['heading_angle_rad'] is not None and
+                 np.isfinite(pose['position_origin_m']).all() and
+                 np.isfinite(pose['heading_angle_rad']))
+        if not valid:
+            self.previous_pose = None
+        if now - self.last_control < CONTROL_PERIOD_S:
+            return
+        self.last_control = now
+        if not valid:
+            action = np.zeros(2)
+            self.mode = ('calibration -> stop' if not calibrated
+                         else 'marker/heading unavailable -> stop')
+        else:
+            x, y = pose['position_origin_m'][:2]
+            yaw = pose['heading_angle_rad']
+            vx = vy = yaw_rate = 0.0
+            if self.previous_pose is not None:
+                px, py, pyaw, previous_time = self.previous_pose
+                dt = now - previous_time
+                if dt > 0:
+                    vx, vy = (x - px) / dt, (y - py) / dt
+                    yaw_rate = math.atan2(math.sin(yaw - pyaw), math.cos(yaw - pyaw)) / dt
+            self.previous_pose = (x, y, yaw, now)
+            observation = policy_observation(
+                x, y, yaw, vx, vy, yaw_rate, *TARGET_XY_M,
+                position_scale_m=POSITION_SCALE_M)
+            left, right, debug = compute_motor_command_to_target(
+                x, y, math.degrees(yaw), TARGET_XY_M)
+            if debug['distance_m'] <= STOP_DISTANCE_M:
+                action, self.mode = np.zeros(2), 'at goal -> stop'
+            elif self.policy is not None:
+                action, self.mode = self.policy.act(observation), 'policy'
+            else:
+                action = np.array([left, right]) / max(FORWARD_CMD, TURN_CMD_MAX)
+                self.mode = 'p:' + debug['mode']
+            action = np.clip(action, -MAX_ACTION, MAX_ACTION)
+        self.channels = send_policy_action(ser, action)
 
 
 def main():
@@ -237,13 +389,20 @@ def main():
     params = cv2.aruco.DetectorParameters()
     params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
     detector = cv2.aruco.ArucoDetector(dictionary, params)
-    capture = cv2.VideoCapture(CAM_INDEX)
+    controller = MotorController()
+    ser, capture = None, None
     samples, geometry, preview = [], None, None
-    last_pose_print = float('-inf')
     try:
+        if not DRY_RUN:
+            ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1, write_timeout=0.1)
+            time.sleep(1)  # Allow the ESP32 to reset after opening USB serial.
+            send_motor_command(ser, 0, 0)
+        print(f'Controller: {CONTROLLER}; target: {TARGET_XY_M} m; '
+              f'{"DRY RUN" if DRY_RUN else SERIAL_PORT}')
+        capture = cv2.VideoCapture(CAM_INDEX)
         if not capture.isOpened():
             raise RuntimeError('Cannot open camera.')
-        print('Keep all four corner markers visible and still. R recalibrates; Esc quits.')
+        print('Keep all four corner markers visible and still. R recalibrates; Q or Esc quits.')
         while True:
             ok, frame = capture.read()
             if not ok:
@@ -278,6 +437,7 @@ def main():
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
             # Show estimates immediately while collecting the calibration samples.
             displayed_geometry = geometry if geometry is not None else preview
+            id4_pose = None
             if displayed_geometry is not None:
                 draw_origin_axes(vis, displayed_geometry, K, zero_distortion)
                 cv2.putText(vis, f"Width {displayed_geometry['width']:.4f} m  Height {displayed_geometry['height']:.4f} m",
@@ -285,10 +445,7 @@ def main():
                 id4_pose = locate_aruco_4(found, displayed_geometry, K, zero_distortion)
                 if id4_pose is not None:
                     display_id4_rotation(vis, id4_pose)
-                    now = time.monotonic()
-                    if now - last_pose_print >= POSE_PRINT_INTERVAL_S:
-                        print_id4_pose(id4_pose)
-                        last_pose_print = now
+                    print_id4_pose(id4_pose)
                     T_camera_from_id4 = id4_pose['T_camera_from_id4']
                     id4_rvec, _ = cv2.Rodrigues(T_camera_from_id4[:3, :3])
                     cv2.drawFrameAxes(vis, K, zero_distortion, id4_rvec,
@@ -306,16 +463,28 @@ def main():
                 else:
                     cv2.putText(vis, 'ID4 not detected or pose unavailable', (10, 60),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
+            controller.update(ser, id4_pose, geometry is not None, time.monotonic())
+            cv2.putText(vis, f'{controller.mode} | ESP L={controller.channels[0]} R={controller.channels[1]}',
+                        (10, 345), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
+            cv2.putText(vis, f'Target: {TARGET_XY_M} m', (10, 370),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
+            cv2.putText(vis, 'Q/Esc: quit | R: recalibrate',
+                        (10, vis.shape[0] - 15), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.6, (255, 255, 255), 2)
             cv2.imshow('ArUco measured rectangle', vis)
             key = cv2.waitKey(1) & 0xFF
-            if key == 27:
+            if key in (27, ord('q'), ord('Q')):
                 break
             if key in (ord('r'), ord('R')):
+                controller.reset(ser)
                 samples, geometry, preview = [], None, None
-                last_pose_print = float('-inf')
     finally:
-        capture.release()
-        cv2.destroyAllWindows()
+        try:
+            stop_motors(ser)
+        finally:
+            if capture is not None:
+                capture.release()
+            cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
