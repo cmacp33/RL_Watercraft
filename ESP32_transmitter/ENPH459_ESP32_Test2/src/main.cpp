@@ -36,6 +36,34 @@ const int resolution = 8;
 
 static uint32_t heartbeat_counter = 0;
 
+// Failsafe: if no serial command line arrives for this long, command both motors to 0.
+// The PC control loop sends every 100 ms, so a crashed/frozen script stops the boat.
+// Set to 0 to disable (e.g. typing commands by hand in the serial monitor).
+#define SERIAL_TIMEOUT_MS 300
+
+static int leftSpeed = 0;
+static int rightSpeed = 0;
+static unsigned long lastSerialCmd = 0;
+static unsigned long lastThrust = 0;
+
+void sendSpeedCommand() {
+  struct_message msg;
+  msg.id = 1;
+  msg.leftSpeed = leftSpeed;
+  msg.rightSpeed = rightSpeed;
+
+  Serial.print("[SPEED CMD] Left: ");
+  Serial.print(msg.leftSpeed);
+  Serial.print(" Right: ");
+  Serial.println(msg.rightSpeed);
+
+  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&msg, sizeof(msg));
+  if (result != ESP_OK) {
+    Serial.println("Failed to send speed command");
+  }
+  lastThrust = millis();
+}
+
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   char macStr[18];
   snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -86,6 +114,7 @@ void setup() {
 
   // iniialize Serial Monitor
   Serial.begin(115200);
+  Serial.setTimeout(20);  // don't block up to 1 s on a partial line
   delay(1000);  // Give serial monitor time to start
  
   // Set device as a Wi-Fi Station
@@ -154,9 +183,6 @@ void loop() {
   }
   
   // Handle serial input for speed commands
-  static int leftSpeed = 0;
-  static int rightSpeed = 0;
-  
   if (Serial.available()) {
     String input = Serial.readStringUntil('\n');
     input.trim();
@@ -189,28 +215,26 @@ void loop() {
       }
       
       Serial.println("  Format: 'left right' or just 'value' for both (-255 to +255)");
+
+      // forward new commands right away instead of waiting for the next 100 ms tick
+      lastSerialCmd = millis();
+      sendSpeedCommand();
     }
   }
-  
-  // Send thrust commands at regular interval (100ms)
-  static unsigned long lastThrust = 0;
+
+  // Serial-silence failsafe: stop the motors if the PC stops sending
+  if (SERIAL_TIMEOUT_MS > 0 && (leftSpeed != 0 || rightSpeed != 0) &&
+      millis() - lastSerialCmd > SERIAL_TIMEOUT_MS) {
+    leftSpeed = 0;
+    rightSpeed = 0;
+    Serial.println("[FAILSAFE] No serial command for " + String(SERIAL_TIMEOUT_MS) + " ms - motors set to 0");
+    sendSpeedCommand();
+  }
+
+  // Keep re-sending the current command every 100 ms (receiver failsafe triggers after 1 s of silence)
   if (millis() - lastThrust > 100) {
-    struct_message msg;
-    msg.id = 1;
-    msg.leftSpeed = leftSpeed;
-    msg.rightSpeed = rightSpeed;
-    
-    Serial.print("[SPEED CMD] Left: ");
-    Serial.print(msg.leftSpeed);
-    Serial.print(" Right: ");
-    Serial.println(msg.rightSpeed);
-    
-    esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&msg, sizeof(msg));
-    if (result != ESP_OK) {
-      Serial.println("Failed to send speed command");
-    }
-    lastThrust = millis();
+    sendSpeedCommand();
   }
-  
-  delay(50);
+
+  delay(2);
 }

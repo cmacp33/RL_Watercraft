@@ -1,6 +1,7 @@
 """Shared observation and action conversions for sim and real-boat policies."""
 
 import math
+from typing import NamedTuple
 
 import numpy as np
 
@@ -12,6 +13,35 @@ GOAL_RADIUS_M = 0.5
 FORWARD_SPEED_SCALE_MPS = 3.0
 YAW_RATE_SCALE_RADPS = 2.0
 ESP32_MAX_COMMAND = 255
+
+
+class MotorCalibration(NamedTuple):
+    """Real-boat corrections so that policy 'left'/'right' mean the physical thrusters.
+
+    The policy (and Gazebo) assume identical thrusters with left/right in the boat's
+    frame. Apply this only on the hardware path, never in sim.
+    """
+    swap_channels: bool = False  # True: ESP32 leftSpeed channel drives the physical RIGHT thruster
+    left_gain: float = 1.0       # multiplier for the physical left thruster
+    right_gain: float = 1.0      # multiplier for the physical right thruster
+    deadband: int = 0            # smallest command that spins a motor; non-zero commands start here
+    max_command: int = ESP32_MAX_COMMAND  # command where thrust stops increasing; |action| = 1 maps here
+    min_action: float = 0.0      # |action| below this sends 0, so tiny outputs don't jump to the deadband
+
+
+NO_CALIBRATION = MotorCalibration()
+
+# Measured on the real boat (bench test 2026-11). Usable range is ~40..90 for both
+# motors: below 40 nothing spins, above 90 thrust doesn't increase.
+# Policy |action| (0, 1] maps linearly onto [40, 90].
+REAL_BOAT_CALIBRATION = MotorCalibration(
+    swap_channels=True,
+    left_gain=1.8,  # from the old track_aruco_v3.py `left * 1.8`; RE-MEASURE inside 40..90 (see notes)
+    right_gain=1.0,
+    deadband=40,
+    max_command=90,
+    min_action=0.05,
+)
 
 
 def policy_observation(
@@ -128,8 +158,47 @@ def gazebo_thrust_action(action):
     return normalized_action(action)
 
 
-def esp32_motor_action(action, max_command=ESP32_MAX_COMMAND):
-    """Convert normalized left/right actions to ESP32 integer commands."""
-    if max_command <= 0:
-        raise ValueError("max_command must be positive")
-    return np.rint(normalized_action(action) * max_command).astype(np.int16)
+def esp32_motor_action(action, calibration=REAL_BOAT_CALIBRATION):
+    """Convert a normalized [left, right] policy action to ESP32 [leftSpeed, rightSpeed] commands.
+
+    Per physical thruster: gain -> clip to [-1, 1] -> |x| < min_action gives 0, otherwise
+    |x| maps linearly onto [deadband, max_command]. Then the pair is mapped onto ESP32 channels.
+    """
+    cal = calibration
+    if not 0 < cal.max_command <= ESP32_MAX_COMMAND:
+        raise ValueError("max_command must be in (0, %d]" % ESP32_MAX_COMMAND)
+    if not 0 <= cal.deadband < cal.max_command:
+        raise ValueError("deadband must be in [0, max_command)")
+    left, right = normalized_action(action)
+    commands = []
+    for value, gain in ((left, cal.left_gain), (right, cal.right_gain)):
+        scaled = float(np.clip(value * gain, -1.0, 1.0))
+        if abs(scaled) < cal.min_action or scaled == 0.0:
+            commands.append(0.0)
+        else:
+            commands.append(math.copysign(
+                cal.deadband + abs(scaled) * (cal.max_command - cal.deadband), scaled))
+    if cal.swap_channels:
+        commands.reverse()
+    return np.rint(commands).astype(np.int16)
+
+class NumpyPolicy:
+    """Run a trained policy with numpy only (no torch needed on the camera machine).
+
+    Loads the .npz written by training_scripts/export_policy.py (or by training itself):
+    the 6 -> hidden -> 2 MLP from gazebo_pool_v0_xentropy.Net, with tanh on the output,
+    exactly as run_model.py does.
+    """
+
+    def __init__(self, path):
+        with np.load(path) as weights:
+            self.w0, self.b0 = weights['w0'], weights['b0']
+            self.w1, self.b1 = weights['w1'], weights['b1']
+        if self.w0.shape[1] != 6 or self.w1.shape[0] != 2:
+            raise ValueError("Expected a 6-input, 2-output policy, got %s -> %s"
+                             % (self.w0.shape, self.w1.shape))
+
+    def act(self, observation):
+        """Deterministic [left, right] action in [-1, 1] for a normalized observation."""
+        hidden = np.maximum(0.0, self.w0 @ np.asarray(observation, dtype=np.float32) + self.b0)
+        return np.tanh(self.w1 @ hidden + self.b1).astype(np.float32)

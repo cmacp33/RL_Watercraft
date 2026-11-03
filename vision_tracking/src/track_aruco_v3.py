@@ -1,3 +1,4 @@
+import argparse
 import cv2
 import numpy as np
 from collections import defaultdict
@@ -8,12 +9,12 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from policy_contract import POSITION_SCALE_M, PoseObservationAdapter, esp32_motor_action
+from policy_contract import NumpyPolicy, POSITION_SCALE_M, PoseObservationAdapter, esp32_motor_action
 
 # ====== SERIAL Settings
-SERIAL_PORT    = "/dev/cu.usbserial-2140"   #this is for linux/macm change to COM etc on Windows
+SERIAL_PORT    = "/dev/cu.usbserial-2140"   # macOS; Linux /dev/ttyUSB0, Windows COMx. Override with --port
 BAUD_RATE      = 115200
-SEND_THRESHOLD = 0.05             # 5% change triggers a send
+CONTROL_PERIOD_S = 0.1            # same as the sim (pool_gym_v0 control_period_s)
 
 # ===== INPUT =====
 CAM_INDEX = 0
@@ -433,9 +434,7 @@ def compute_motor_command_to_target(x_cm, y_cm, yaw_deg, target_xy):
 
 
 def send_motor_command(ser, motor_left, motor_right):
-    """Send left/right motor commands to the controller over serial."""
-    print(f"Motor commands - Left: {motor_left}, Right: {motor_right}")
-
+    """Send ESP32 channel commands ("leftSpeed rightSpeed") over serial."""
     if ser is None:
         return
 
@@ -450,149 +449,135 @@ def send_policy_action(ser, action):
     """Scale a normalized policy action to ESP32 motor commands and send it."""
     motor_left, motor_right = esp32_motor_action(action)
     send_motor_command(ser, int(motor_left), int(motor_right))
+    return int(motor_left), int(motor_right)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Camera -> controller -> ESP32 serial loop")
+    parser.add_argument("--controller", choices=["p", "policy"], default="p",
+                        help="p = hand-written turn-then-drive controller, policy = trained network")
+    parser.add_argument("--weights", default=None,
+                        help="policy .npz from training_scripts/export_policy.py (needed for --controller policy)")
+    parser.add_argument("--target", type=float, nargs=2, default=TARGET, metavar=("X_CM", "Y_CM"),
+                        help="goal in water-frame cm")
+    parser.add_argument("--max-action", type=float, default=0.4,
+                        help="cap on |action| before motor calibration (1.0 = full usable thrust)")
+    parser.add_argument("--port", default=SERIAL_PORT, help="serial port of the transmitter ESP32")
+    parser.add_argument("--dry-run", action="store_true", help="don't open serial; print commands only")
+    return parser.parse_args()
 
 
 def main():
-    
+    args = parse_args()
+    if args.controller == "policy" and not args.weights:
+        sys.exit("--controller policy needs --weights <file>.npz")
+    policy = NumpyPolicy(args.weights) if args.controller == "policy" else None
+    target = tuple(args.target)
+    p_full_scale = max(FORWARD_CMD, TURN_CMD_MAX)
+    print(f"Controller: {args.controller}, target {target} cm, max action {args.max_action}, "
+          f"{'DRY RUN' if args.dry_run else 'serial ' + args.port}")
+
     # load K and D from the file
     calib = np.load(CALIB_FILE)
     K, D  = calib["K"], calib["D"]
     D = D.flatten()
 
     # setup serial communication to ESP-A
-    try:
-        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-        print(f"Serial connection opened: {SERIAL_PORT} at {BAUD_RATE} baud")
-        time.sleep(1)  # Give ESP time to reset
-    except serial.SerialException as e:
-        print(f"[WARNING] Failed to open serial port {SERIAL_PORT}: {e}")
-        ser = None
+    ser = None
+    if not args.dry_run:
+        try:
+            ser = serial.Serial(args.port, BAUD_RATE, timeout=1)
+            print(f"Serial connection opened: {args.port} at {BAUD_RATE} baud")
+            time.sleep(1)  # Give ESP time to reset
+        except serial.SerialException as e:
+            sys.exit(f"Failed to open serial port {args.port}: {e} (use --dry-run to test without it)")
 
     # setup detector
     aruco = cv2.aruco
     dictionary = aruco.getPredefinedDictionary(DICT)
     params = aruco.DetectorParameters()
     detector = aruco.ArucoDetector(dictionary, params)
-    
+
     # setup camera
     cap = cv2.VideoCapture(CAM_INDEX)
     if not cap.isOpened():
         raise RuntimeError("Cannot open camera.")
-    
-    # find homography matrix H of rankd rim, and img_pts of the corners
-    Hmat, img_pts = find_homography_mat(cap, detector, K, D)
-    
-    
-    
-    R, t, rvec = find_extrinsic_matrix( img_pts, K, D)
-    
-    
-    ret, frame = cap.read()
-    if not ret:
-        print("Its SO OVER")
-    
-    frame_u = cv2.undistort(frame, K, D)
-    vis, id_to_corners = detect_and_draw_markers(frame, detector)
-    
-    Extrinsic_water, t_water, Z_water = find_water_extrinsic(id_to_corners, K, D, R, t)
-    
-    motor_left, motor_right = 0, 0  # default to stop
-    pose_adapter = PoseObservationAdapter(position_scale_m=POSITION_SCALE_M)
-    
-    while True:
+
+    try:
+        # find homography matrix H of rankd rim, and img_pts of the corners
+        Hmat, img_pts = find_homography_mat(cap, detector, K, D)
+        R, t, rvec = find_extrinsic_matrix( img_pts, K, D)
+
         ret, frame = cap.read()
         if not ret:
-            print("Cooked")
-            break
-        
-        frame = cv2.undistort(frame, K, D)
+            print("Its SO OVER")
+
         vis, id_to_corners = detect_and_draw_markers(frame, detector)
-        draw_rectangle_edges(vis, img_pts)
-        
-        
-        
-        if Extrinsic_water is not None:
-            marker_pose = locate_marker_in_water_frame(
-                id_to_corners,
-                ID_INSIDE,
-                K,
-                D,
-                R,
-                t_water,
-            )
+        Extrinsic_water, t_water, Z_water = find_water_extrinsic(id_to_corners, K, D, R, t)
+
+        pose_adapter = PoseObservationAdapter(position_scale_m=POSITION_SCALE_M)
+        last_control = 0.0
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                print("Cooked")
+                break
+
+            frame = cv2.undistort(frame, K, D)
+            vis, id_to_corners = detect_and_draw_markers(frame, detector)
+            draw_rectangle_edges(vis, img_pts)
+
+            marker_pose = None
+            if Extrinsic_water is not None:
+                marker_pose = locate_marker_in_water_frame(
+                    id_to_corners, ID_INSIDE, K, D, R, t_water)
 
             if marker_pose is not None:
                 xw, yw, zw, yaw_deg = marker_pose
-                policy_obs = pose_adapter.update(
-                    xw, yw, yaw_deg, time.monotonic(), TARGET[0], TARGET[1]
-                )
-                OLD_motor_left, OLD_motor_right = motor_left, motor_right
-                motor_left, motor_right, debug = compute_motor_command_to_target(
-                    xw, yw, yaw_deg, TARGET)
-                
-                motor_left = motor_left * 1.8
-                
-                # swap left and right if motors reversed
-                temp = motor_left
-                motor_left = motor_right
-                motor_right = temp
-                
-                print(f"OLD MOTOR CMD: L={OLD_motor_left} R={OLD_motor_right}  →  NEW MOTOR CMD: L={motor_left} R={motor_right}")
+                cv2.putText(vis, f"ID {ID_INSIDE}: x={xw:.2f} y={yw:.2f} z={zw:.2f} yaw={yaw_deg:.1f}",
+                            (30, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
 
-                if OLD_motor_left >= 0 and motor_left < 0 or OLD_motor_right >= 0 and motor_right < 0:
-                    send_motor_command(ser, motor_left, motor_right)
-                    time.sleep(0.1)
-                    # send_motor_command(ser, 0, 0)
-                    time.sleep(0.1)
-                    send_motor_command(ser, motor_left, motor_right)
-                
+            # Control at a fixed rate matching sim training (CONTROL_PERIOD_S). A command is sent
+            # every tick even if unchanged: the transmitter stops the motors if serial goes quiet.
+            now = time.monotonic()
+            if now - last_control >= CONTROL_PERIOD_S:
+                last_control = now
+                if marker_pose is None:
+                    pose_adapter.reset()  # don't difference velocity across the gap
+                    action, mode, extra = np.zeros(2), "marker lost -> stop", ""
                 else:
-                    send_motor_command(ser, motor_left, motor_right)
-                
-                text_overlay = (
-                    f"ID {ID_INSIDE}: x={xw:.2f} y={yw:.2f} z={zw:.2f} yaw={yaw_deg:.1f}"
-                )
-                cv2.putText(
-                    vis,
-                    text_overlay,
-                    (30, 40),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8,
-                    (0, 255, 255),
-                    2,
-                )
-                print(
-                    f"({xw:.4f}, {yw:.4f}, {zw:.4f}) cm, {yaw_deg:.2f} deg"
-                    f"{debug['mode']} dist={debug['distance_cm']:.1f}cm "
-                    f"err={debug['heading_error_deg']:.1f}deg "
-                    f"policy_obs={np.round(policy_obs, 3).tolist()} "
-                    f"L={motor_left} R={motor_right}"
-                )
-            else:
-                print(f"[Marker {ID_INSIDE}] not detected in current frame"
-)
+                    policy_obs = pose_adapter.update(xw, yw, yaw_deg, now, target[0], target[1])
+                    p_left, p_right, debug = compute_motor_command_to_target(xw, yw, yaw_deg, target)
+                    if debug["distance_cm"] <= STOP_DISTANCE_CM:
+                        action, mode = np.zeros(2), "at goal -> stop"
+                    elif policy is not None:
+                        action, mode = policy.act(policy_obs), "policy"
+                    else:
+                        # P-controller output is physical left/right with FORWARD_CMD as full thrust
+                        action, mode = np.array([p_left, p_right]) / p_full_scale, "p:" + debug["mode"]
+                    extra = (f"pose=({xw:.1f}, {yw:.1f}) cm yaw={yaw_deg:.1f} "
+                             f"dist={debug['distance_cm']:.1f}cm err={debug['heading_error_deg']:.1f}deg "
+                             f"obs={[round(float(v), 3) for v in policy_obs]}")
 
-        cv2.imshow("track_aruco", vis)
-        
+                action = np.clip(action, -args.max_action, args.max_action)
+                esp_left, esp_right = send_policy_action(ser, action)
+                print(f"[{mode}] action=[{action[0]:+.2f} {action[1]:+.2f}] -> ESP L={esp_left} R={esp_right} {extra}")
 
-        key = cv2.waitKey(500) & 0xFF
-        
-        if key == 27:  # ESC via OpenCV window
-            # send_motor_command(ser, 0, 0)
-            break
-    
-    cap.release()
-    cv2.destroyAllWindows()
-
-
-    
-    if ser is not None:
-        cmd = f"{0} {0}\n"
-        ser.write(cmd.encode())
-        time.sleep(1)
-        
-        ser.close()
-        print("Serial connection closed")
+            cv2.imshow("track_aruco", vis)
+            key = cv2.waitKey(1) & 0xFF
+            if key in (27, ord("q")):  # ESC or q in the OpenCV window
+                break
+    finally:
+        # always leave the motors stopped: normal exit, Ctrl-C or a crash
+        if ser is not None:
+            for _ in range(3):
+                send_motor_command(ser, 0, 0)
+                time.sleep(0.05)
+            ser.close()
+            print("Motors stopped, serial connection closed")
+        cap.release()
+        cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
