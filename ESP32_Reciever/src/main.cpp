@@ -3,6 +3,10 @@
 #include <WiFi.h>
 #include <driver/ledc.h>
 
+// Arduino core 3.x renamed the LEDC functions and changed the ESP-NOW receive
+// callback; support both so the project builds on either core
+#define ARDUINO_CORE_3 (ESP_ARDUINO_VERSION_MAJOR >= 3)
+
 
 uint8_t broadcastAddress[] = {0x64, 0xB7, 0x08, 0x9D, 0x46, 0xA4};  // ENPH459_ESP32_Test2 MAC
 
@@ -107,7 +111,11 @@ void setMotorSpeed(int channel, int speed) {
   // dutyCycle = (pulseWidth / ESC_PERIOD_US) * (1 << ESC_RESOLUTION)
   int dutyCycle = (pulseWidth * (1L << ESC_RESOLUTION)) / ESC_PERIOD_US;
   
+#if ARDUINO_CORE_3
   ledcWriteChannel(channel, dutyCycle);
+#else
+  ledcWrite(channel, dutyCycle);
+#endif
 }
 
 // Adjust an output for static friction when the motor starts from a stop
@@ -188,8 +196,12 @@ void updateMotor(MotorState &m, int target) {
 }
 
 // Callback when data is received
+#if ARDUINO_CORE_3
 void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, int len) {
   const uint8_t *mac = info->src_addr;
+#else
+void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
+#endif
 
   char macStr[18];
   snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -258,8 +270,15 @@ void setup() {
   Serial.print(RIGHT_CHANNEL);
   Serial.printf(", %d Hz, %d-bit\n", ESC_FREQ, ESC_RESOLUTION);
   
+#if ARDUINO_CORE_3
   ledcAttachChannel(LEFT_MOTOR_PIN, ESC_FREQ, ESC_RESOLUTION, LEFT_CHANNEL);
   ledcAttachChannel(RIGHT_MOTOR_PIN, ESC_FREQ, ESC_RESOLUTION, RIGHT_CHANNEL);
+#else
+  ledcSetup(LEFT_CHANNEL, ESC_FREQ, ESC_RESOLUTION);
+  ledcSetup(RIGHT_CHANNEL, ESC_FREQ, ESC_RESOLUTION);
+  ledcAttachPin(LEFT_MOTOR_PIN, LEFT_CHANNEL);
+  ledcAttachPin(RIGHT_MOTOR_PIN, RIGHT_CHANNEL);
+#endif
   
   // Start with both motors at neutral (0 speed)
   setMotorSpeed(LEFT_CHANNEL, 0);
