@@ -31,7 +31,7 @@ CONTROL_PERIOD_S = 0.1
 DRY_RUN = False  # True: display commands without opening the serial port.
 CONTROLLER = 'policy'  # 'p': turn then drive; 'policy': trained network.
 POLICY_WEIGHTS = Path(__file__).resolve().parents[2] / 'runs/20261102-181000_300steps/best.npz'
-TARGET_XY_M = (0.0, 0.0)  # Rectangle-center frame: X ID0->ID1, Y ID0->ID3.
+TARGET_XY_M = (0.25, 0.25)  # Rectangle-center frame: X ID0->ID1, Y ID0->ID3.
 STOP_DISTANCE_M = 0.08
 HEADING_TOL_DEG = 12.0
 FORWARD_CMD = 100
@@ -44,7 +44,7 @@ CAM_INDEX = 0
 CORNER_IDS = (0, 1, 2, 3)
 TARGET_ID = 4
 MARKER_LENGTH_M = 0.04
-N_CALIB_FRAMES = 20
+N_CALIB_FRAMES = 5
 AXIS_LENGTH_M = 0.05
 PRINT_FULL_TRANSFORMS = False  # Enable verbose matrices each frame if needed.
 CALIB_FILE = Path(__file__).with_name('camera_calibration.npz')
@@ -286,6 +286,7 @@ def send_motor_command(ser, motor_left, motor_right):
         written = ser.write(payload)
         if written != len(payload):
             raise serial.SerialException('Incomplete motor command write')
+        print(f'Serial TX: {payload!r}', flush=True)
 
 
 def send_policy_action(ser, action):
