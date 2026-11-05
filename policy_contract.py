@@ -36,8 +36,8 @@ NO_CALIBRATION = MotorCalibration()
 # Policy |action| (0, 1] maps linearly onto [40, 90].
 REAL_BOAT_CALIBRATION = MotorCalibration(
     swap_channels=True,
-    left_gain=1.8,  # from the old track_aruco_v3.py `left * 1.8`; RE-MEASURE inside 40..90 (see notes)
-    right_gain=1.0,
+    left_gain=1.0,  # from the old track_aruco_v3.py `left * 1.8`; RE-MEASURE inside 40..90 (see notes)
+    right_gain=1.8,
     deadband=40,
     max_command=90,
     min_action=0.05,
