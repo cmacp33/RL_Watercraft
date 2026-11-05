@@ -19,7 +19,7 @@ from policy_contract import GOAL_RADIUS_M  # same radius as done_check in pool_g
 from run_logging import CsvLog, goal_distance_m
 
 EVAL_FIELDS = ['episode', 'total_reward', 'steps', 'start_dist_m', 'final_dist_m',
-               'min_dist_m', 'reached']
+               'min_dist_m', 'reached', 'goal_x_m', 'goal_y_m']
 
 
 def parse_args():
@@ -31,6 +31,9 @@ def parse_args():
     parser.add_argument('--episodes', type=int, default=5)
     parser.add_argument('--goal', type=float, nargs=2, metavar=('X', 'Y'),
                         help='override env goal in tank coordinates (m)')
+    parser.add_argument('--random-goals', action='store_true',
+                        help='new random goal each episode (same goals every time for a given --seed)')
+    parser.add_argument('--seed', type=int, default=0, help='seed for random goals / randomization')
     parser.add_argument('--randomize', action='store_true',
                         help='evaluate under domain randomization (random motor gains/deadband/latency + sensor noise)')
     parser.add_argument('--noise', type=float, default=0.0,
@@ -52,7 +55,10 @@ if __name__ == '__main__':
         args.weights = (os.path.join(args.run, 'best.pth') if args.run
                         else os.path.join(REPO_DIR, 'saved_weights', 'pool_policy.pth'))
     # eval.csv is the training goal (read by compare_runs.py); other goals get their own file
-    eval_name = 'eval.csv' if args.goal is None else 'eval_goal_%g_%g.csv' % tuple(args.goal)
+    if args.random_goals and args.goal is not None:
+        sys.exit('use either --goal or --random-goals')
+    eval_name = ('eval_random_goals.csv' if args.random_goals else
+                 'eval.csv' if args.goal is None else 'eval_goal_%g_%g.csv' % tuple(args.goal))
     if args.randomize:
         eval_name = eval_name.replace('.csv', '_randomized.csv')
     eval_path = os.path.join(args.run, eval_name) if args.run else None
@@ -69,11 +75,13 @@ if __name__ == '__main__':
     time.sleep(2)
     pool_env = env.unwrapped
     pool_env.domain_randomization = args.randomize
+    pool_env.random_goals = args.random_goals
+    pool_env._seed(args.seed)  # same goal sequence for every policy evaluated with this seed
 
     # goal is read in get_state, so set it before reset
     if args.goal is not None:
         pool_env.goal = np.array(args.goal, dtype=np.float32)
-    print("Goal:", pool_env.goal)
+    print("Goal:", "random each episode" if args.random_goals else pool_env.goal)
 
     results = []
     for episode in range(args.episodes):
@@ -101,9 +109,10 @@ if __name__ == '__main__':
         if eval_log:
             eval_log.write(episode=episode, total_reward=episode_reward, steps=step_count,
                            start_dist_m=start_dist, final_dist_m=final_dist,
-                           min_dist_m=min_dist, reached=int(reached))
-        print("Episode %d: total reward=%.1f, start dist=%.2f m, final dist=%.2f m, steps=%d, %s" % (
-            episode, episode_reward, start_dist, final_dist, step_count,
+                           min_dist_m=min_dist, reached=int(reached),
+                           goal_x_m=float(pool_env.goal[0]), goal_y_m=float(pool_env.goal[1]))
+        print("Episode %d: goal (%.1f, %.1f), total reward=%.1f, start dist=%.2f m, final dist=%.2f m, steps=%d, %s" % (
+            episode, pool_env.goal[0], pool_env.goal[1], episode_reward, start_dist, final_dist, step_count,
             "REACHED GOAL" if reached else "timed out"))
 
     # summary

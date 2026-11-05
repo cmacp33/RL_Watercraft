@@ -33,8 +33,20 @@ ACT_SIZE = 2
 
 MAX_TRAIN_SEC = 60 * 60 # 1 hour of training
 
-# noise standard deviation
-NOISE_STD = 0.5
+# exploration noise added to every action; decays linearly so later batches show what the
+# policy can actually do (and elites stop being mostly noise)
+NOISE_START = 0.5
+NOISE_END = 0.1
+NOISE_DECAY_ITERS = 30
+
+# elite memory: best episodes ever seen (by episode_score), trained on every iteration, so one
+# bad batch can't make the policy forget what worked
+ELITE_MEMORY = 50
+# gradient steps per iteration on the elite data (was 1)
+TRAIN_STEPS_PER_ITER = 10
+LR = 0.01
+# approach speed (m/s) that counts as "fast" when ranking successful episodes
+REF_SPEED_MPS = 2.0
 
 # absolute so the result doesn't depend on which folder the script is run from
 LATEST_WEIGHTS = os.path.join(REPO_DIR, 'saved_weights', 'pool_policy.pth')
@@ -59,12 +71,13 @@ class Net(nn.Module):
 
 # save episode and step history
 Episode = namedtuple('Episode', field_names=['reward', 'steps', 'start_dist', 'final_dist',
-                                             'min_dist', 'reached'])
+                                             'min_dist', 'reached', 'goal'])
 EpisodeStep = namedtuple('EpisodeStep', field_names=['observation', 'action'])
 
 
 # manage env to get batch data
-def iterate_batches(env, net, batch_size):
+def iterate_batches(env, net, batch_size, noise):
+    """noise: one-element list holding the current noise std, so the caller can decay it."""
 
     pool_env = env.unwrapped
 
@@ -82,7 +95,7 @@ def iterate_batches(env, net, batch_size):
         obs_v = torch.FloatTensor([obs])
         action_v = net(obs_v)
         action = action_v.data.numpy()[0]
-        action = np.clip(np.tanh(action) + np.random.normal(0, NOISE_STD, size=ACT_SIZE), -1.0, 1.0)
+        action = np.clip(np.tanh(action) + np.random.normal(0, noise[0], size=ACT_SIZE), -1.0, 1.0)
 
         # step
         next_obs, reward, done, info = env.step(action)
@@ -99,7 +112,8 @@ def iterate_batches(env, net, batch_size):
             # add episode to history and reset everything
             batch.append(Episode(reward=episode_reward, steps=episode_steps,
                                  start_dist=start_dist, final_dist=dist, min_dist=min_dist,
-                                 reached=dist <= GOAL_RADIUS_M))
+                                 reached=dist <= GOAL_RADIUS_M,
+                                 goal=[float(v) for v in pool_env.goal]))
 
             # reset reward, steps, and env
             episode_reward = 0.0
@@ -114,26 +128,33 @@ def iterate_batches(env, net, batch_size):
 
         obs = next_obs
 
-# filter batches to gind the best ones
-def filter_batch(batch, percentile):
+def episode_score(ep, control_period_s):
+    """Goal-distance-independent score used to pick elites (the reward is NOT used for this).
 
-    rewards = [episode.reward for episode in batch] # lists rewards of every batch
-    reward_bound = np.percentile(rewards, percentile)
-    reward_mean = float(np.mean(rewards))
+    Raw reward grows with goal distance (2 per metre closed), so with random goals it favours
+    far goals. Instead:
+      failed:  fraction of the start distance closed, (start - final) / start  -> at most 1,
+               negative if the boat ended farther away
+      reached: 1 + average approach speed / REF_SPEED_MPS (capped)             -> 1 to 2
+    so any success beats any failure, and neither depends on how far the goal was.
+    """
+    if ep.reached:
+        speed = ep.start_dist / max(1, len(ep.steps)) / control_period_s
+        return 1.0 + min(1.0, speed / REF_SPEED_MPS)
+    return (ep.start_dist - ep.final_dist) / max(ep.start_dist, 1e-6)
 
-    train_obs = []
-    train_act = []
 
-    for example in batch:
-        if example.reward < reward_bound:
-            continue
+def select_elites(scored_batch, percentile):
+    """Top (100 - percentile)% of the batch by score, ignoring episodes that made no progress."""
+    bound = np.percentile([score for score, _ in scored_batch], percentile)
+    return [(score, ep) for score, ep in scored_batch if score >= bound and score > 0], bound
 
-        train_obs.extend(map(lambda step: step.observation, example.steps))
-        train_act.extend(map(lambda step: step.action, example.steps))
 
-    train_obs_v = torch.FloatTensor(train_obs)
-    train_act_v = torch.FloatTensor(np.array(train_act, dtype=np.float32))
-    return train_obs_v, train_act_v, reward_bound, reward_mean
+def elite_tensors(memory):
+    obs = [step.observation for _, ep in memory for step in ep.steps]
+    act = [step.action for _, ep in memory for step in ep.steps]
+    return (torch.FloatTensor(np.array(obs, dtype=np.float32)),
+            torch.FloatTensor(np.array(act, dtype=np.float32)))
 
 
 def parse_args():
@@ -146,6 +167,10 @@ def parse_args():
                         help='stop once batch success rate is >= this (set above 1 to disable)')
     parser.add_argument('--stop-iters', type=int, default=STOP_SUCCESS_ITERS,
                         help='... for this many consecutive batches')
+    parser.add_argument('--random-goals', action='store_true',
+                        help='new random goal every episode (3-12 m from spawn, any direction)')
+    parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
+                        help='episodes per training iteration (use ~16 with --random-goals)')
     parser.add_argument('--randomize', action='store_true',
                         help='domain randomization: random motor gains/deadband/latency + sensor noise per episode')
     return parser.parse_args()
@@ -160,19 +185,22 @@ if __name__ == '__main__':
     time.sleep(2)
     pool_env = env.unwrapped
     pool_env.domain_randomization = args.randomize
+    pool_env.random_goals = args.random_goals
     obs_size = OBS_SIZE
     n_actions = ACT_SIZE
 
     # set nn
     net = Net(obs_size, HIDDEN_SIZE, n_actions)
 
-    optimizer = optim.Adam(params=net.parameters(), lr=0.01)
+    optimizer = optim.Adam(params=net.parameters(), lr=LR)
 
     # results folder for this run
     run_dir = make_run_dir(args.tag)
     write_config(run_dir, args.tag, pool_env, {
-        'algorithm': 'cross-entropy', 'hidden_size': HIDDEN_SIZE, 'batch_size': BATCH_SIZE,
-        'percentile': PERCENTILE, 'lr': 0.01, 'noise_std': NOISE_STD,
+        'algorithm': 'cross-entropy', 'hidden_size': HIDDEN_SIZE, 'batch_size': args.batch_size,
+        'percentile': PERCENTILE, 'lr': LR, 'noise_start': NOISE_START, 'noise_end': NOISE_END,
+        'noise_decay_iters': NOISE_DECAY_ITERS, 'elite_memory': ELITE_MEMORY,
+        'train_steps_per_iter': TRAIN_STEPS_PER_ITER, 'elite_score': 'distance-normalized (episode_score)',
         'max_minutes': args.minutes, 'stop_success_rate': args.stop_success,
         'stop_success_iters': args.stop_iters,
     })
@@ -188,50 +216,69 @@ if __name__ == '__main__':
     total_goals = 0
     success_streak = 0
     stop_reason = 'unknown'
+    noise = [NOISE_START]
+    memory = []  # (score, Episode), best first, at most ELITE_MEMORY
 
     try:
         # handle batches
-        for iter_no, (batch, mean_sim_dt) in enumerate(iterate_batches(env, net, BATCH_SIZE)):
+        for iter_no, (batch, mean_sim_dt) in enumerate(iterate_batches(env, net, args.batch_size, noise)):
 
             elapsed = time.monotonic() - start_time
-            for ep in batch:
+            scored = [(episode_score(ep, pool_env.control_period_s), ep) for ep in batch]
+            for score, ep in scored:
                 episode_log.write(iter=iter_no, episode=episode_no, total_reward=ep.reward,
                                   steps=len(ep.steps), start_dist_m=ep.start_dist,
                                   final_dist_m=ep.final_dist, min_dist_m=ep.min_dist,
-                                  reached=int(ep.reached), elapsed_s=elapsed)
+                                  reached=int(ep.reached), goal_x_m=ep.goal[0], goal_y_m=ep.goal[1],
+                                  score=score, noise_std=noise[0], elapsed_s=elapsed)
                 episode_no += 1
                 total_goals += int(ep.reached)
 
-            #filter batches
-            obs_v, acts_v, reward_b, reward_m = filter_batch(batch, PERCENTILE) # obs_v shape is (N,6)
-            optimizer.zero_grad()
-            action_scores_v = torch.tanh(net(obs_v))
-
-            # compute losses and back prop
-            loss_v = nn.MSELoss()(action_scores_v, acts_v)
-            loss_v.backward()
-            optimizer.step()
+            # elites of this batch join the memory of best-ever episodes; train on the whole memory
+            elites, score_bound = select_elites(scored, PERCENTILE)
+            memory = sorted(memory + elites, key=lambda item: item[0], reverse=True)[:ELITE_MEMORY]
+            rewards = [ep.reward for ep in batch]
+            reward_m, reward_b = float(np.mean(rewards)), float(np.percentile(rewards, PERCENTILE))
+            loss_v = None
+            if memory:
+                obs_v, acts_v = elite_tensors(memory) # obs_v shape is (N,6)
+                for _ in range(TRAIN_STEPS_PER_ITER):
+                    optimizer.zero_grad()
+                    loss_v = nn.MSELoss()(torch.tanh(net(obs_v)), acts_v)
+                    loss_v.backward()
+                    optimizer.step()
+            loss = loss_v.item() if loss_v is not None else float('nan')
 
             success_rate = float(np.mean([ep.reached for ep in batch]))
             mean_final_dist = float(np.mean([ep.final_dist for ep in batch]))
-            row = dict(iter=iter_no, elapsed_s=elapsed, loss=loss_v.item(),
+            row = dict(iter=iter_no, elapsed_s=elapsed, loss=loss,
                        reward_mean=reward_m, reward_bound=float(reward_b),
                        success_rate=success_rate, mean_final_dist_m=mean_final_dist,
                        mean_min_dist_m=float(np.mean([ep.min_dist for ep in batch])),
                        mean_steps=float(np.mean([len(ep.steps) for ep in batch])),
-                       train_steps_kept=len(obs_v))
+                       train_steps_kept=sum(len(ep.steps) for _, ep in memory),
+                       noise_std=noise[0], score_mean=float(np.mean([sc for sc, _ in scored])),
+                       score_bound=float(score_bound), new_elites=len(elites),
+                       memory_size=len(memory),
+                       memory_success=float(np.mean([ep.reached for _, ep in memory])) if memory else 0.0)
             iteration_log.write(**row)
             tb_log.write(iter_no, row)
 
-            print("%d: loss=%.3f, reward_mean=%.1f, reward_bound=%.1f, success=%.0f%%, final_dist=%.2f m, goals so far=%d/%d" % (
-                iter_no, loss_v.item(), reward_m, reward_b, 100 * success_rate, mean_final_dist,
+            print("%d: success=%.0f%%, final_dist=%.2f m, score_mean=%.2f, reward_mean=%.1f, loss=%.3f, goals so far=%d/%d" % (
+                iter_no, 100 * success_rate, mean_final_dist, row['score_mean'], reward_m, loss,
                 total_goals, episode_no))
+            print("   elites: %d new, memory %d episodes (%.0f%% reached), noise %.2f" % (
+                len(elites), len(memory), 100 * row['memory_success'], noise[0]))
             print("   time: %.1f / %.0f min (%.1f min left at most), %.1f min per batch, sim step %.3f s" % (
                 elapsed / 60, args.minutes, max(0.0, args.minutes - elapsed / 60),
                 elapsed / 60 / (iter_no + 1), mean_sim_dt))
             if mean_sim_dt > 1.2 * pool_env.control_period_s:
                 print("   WARNING: sim steps average %.3f s vs %.2f s intended; lower real_time_update_rate in boat.world"
                       % (mean_sim_dt, pool_env.control_period_s))
+
+            # decay exploration noise for the next batch
+            frac = min(1.0, (iter_no + 1) / NOISE_DECAY_ITERS)
+            noise[0] = NOISE_START + frac * (NOISE_END - NOISE_START)
 
             # "best" uses task metrics, not reward, so it means the same thing for every reward function
             score = (success_rate, -mean_final_dist)

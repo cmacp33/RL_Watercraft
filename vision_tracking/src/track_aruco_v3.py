@@ -464,6 +464,8 @@ def parse_args():
                         help="cap on |action| before motor calibration (1.0 = full usable thrust)")
     parser.add_argument("--port", default=SERIAL_PORT, help="serial port of the transmitter ESP32")
     parser.add_argument("--dry-run", action="store_true", help="don't open serial; print commands only")
+    parser.add_argument("--cam", type=int, default=CAM_INDEX,
+                        help="camera index (0 is usually the laptop webcam; try 1 for a USB camera)")
     return parser.parse_args()
 
 
@@ -499,9 +501,11 @@ def main():
     detector = aruco.ArucoDetector(dictionary, params)
 
     # setup camera
-    cap = cv2.VideoCapture(CAM_INDEX)
+    # DirectShow on Windows opens USB cameras faster and more reliably than the default backend
+    backend = cv2.CAP_DSHOW if sys.platform.startswith("win") else cv2.CAP_ANY
+    cap = cv2.VideoCapture(args.cam, backend)
     if not cap.isOpened():
-        raise RuntimeError("Cannot open camera.")
+        raise RuntimeError(f"Cannot open camera {args.cam} (try another --cam index).")
 
     try:
         # find homography matrix H of rankd rim, and img_pts of the corners

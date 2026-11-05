@@ -38,7 +38,13 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		# init pubs & subs
 		self.left_pub = rospy.Publisher('/boat/thrusters/left_thrust_cmd', Float32, queue_size=10)
 		self.right_pub = rospy.Publisher('/boat/thrusters/right_thrust_cmd', Float32, queue_size=10)
-		
+
+		# Persistent subscriber keeping the newest model_states message. Opening a new subscriber
+		# every step (rospy.wait_for_message) is slow, and physics keeps running meanwhile, which
+		# stretched each 0.1 s control step to ~0.27 s of sim time.
+		self._latest_model_states = None
+		rospy.Subscriber('/gazebo/model_states', ModelStates, self._on_model_states, queue_size=1)
+
 		# misc
 		self._seed()
 
@@ -80,6 +86,13 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		self.dr_params = {}
 		self._pending_actions = deque()
 
+		# Random goals: a new goal each episode instead of the fixed self.goal, so the policy
+		# learns to steer to any goal. The boat always resets to the spawn pose (0, 0, heading +x);
+		# observations are boat-relative, so random goal directions also cover random start headings.
+		self.random_goals = False
+		self.goal_distance_range_m = (3.0, 12.0)  # from the spawn point; ~0.8 m/s -> <= ~15 s at 12 m
+		self.goal_bounds_m = 13.0                 # stay inside the pool walls at +-15 m
+
 	def sample_randomization(self):
 		r = self.dr_ranges
 		self.dr_params = {
@@ -89,6 +102,15 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 			'delay_steps': int(self.np_random.randint(r['delay_steps'][0], r['delay_steps'][1] + 1)),
 		}
 		self._pending_actions = deque([np.zeros(2, dtype=np.float32)] * self.dr_params['delay_steps'])
+
+	def sample_goal(self):
+		"""Uniform direction, uniform distance in goal_distance_range_m, inside the pool."""
+		while True:
+			distance = self.np_random.uniform(*self.goal_distance_range_m)
+			angle = self.np_random.uniform(-math.pi, math.pi)
+			goal = np.array([distance * math.cos(angle), distance * math.sin(angle)], dtype=np.float32)
+			if np.all(np.abs(goal) <= self.goal_bounds_m):
+				return goal
 
 	def actuate(self, action):
 		"""What the thrusters actually do with a commanded action (identity without randomization)."""
@@ -118,8 +140,15 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		"""True distance from the marker to the goal (not affected by observation noise)."""
 		return self.position_scale_m * math.hypot(self.state[0], self.state[1])
 
-	def get_state(self):
-		model_states = rospy.wait_for_message('/gazebo/model_states', ModelStates, timeout=5)
+	def _on_model_states(self, msg):
+		self._latest_model_states = msg
+
+	def get_state(self, wait_fresh=True):
+		"""Boat observation. wait_fresh=False uses the cached message (fast; physics must be paused)."""
+		if wait_fresh or self._latest_model_states is None:
+			model_states = rospy.wait_for_message('/gazebo/model_states', ModelStates, timeout=5)
+		else:
+			model_states = self._latest_model_states
 		try:
 			boat_index = model_states.name.index('boat')
 		except ValueError as error:
@@ -198,9 +227,10 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		self.right_pub.publish(float(action[1]))
 		step_start = rospy.get_time() # sim time (use_sim_time)
 		rospy.sleep(self.control_period_s)
+		self.pause() # pause physics right away so the step lasts ~control_period_s of sim time
+		time.sleep(0.003) # wall-clock: let the last pre-pause model_states message arrive (rospy.sleep would hang while paused)
 		self.prev_state = self.state
-		self.state = self.get_state()
-		self.pause() # pause physics
+		self.state = self.get_state(wait_fresh=False)
 		sim_dt = rospy.get_time() - step_start # > control_period_s if pausing lags behind fast physics
 
 		# compute reward
@@ -223,6 +253,10 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 			self.reset_proxy()
 		except (rospy.ServiceException) as e:
 			print ("/gazebo/reset_world service call failed")
+
+		# goal is read in get_state, so pick it before the first observation
+		if self.random_goals:
+			self.goal = self.sample_goal()
 
 		# unpause simulation to make observation
 		rospy.wait_for_service('/gazebo/unpause_physics')
