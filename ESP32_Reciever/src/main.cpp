@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <esp_now.h>
 #include <WiFi.h>
+#include <driver/ledc.h>
 
 
 uint8_t broadcastAddress[] = {0x64, 0xB7, 0x08, 0x9D, 0x46, 0xA4};  // ENPH459_ESP32_Test2 MAC
@@ -91,7 +92,7 @@ void setMotorSpeed(int channel, int speed) {
   // dutyCycle = (pulseWidth / 20000) * (1 << ESC_RESOLUTION)
   int dutyCycle = (pulseWidth * (1 << ESC_RESOLUTION)) / 20000;
   
-  ledcWrite(channel, dutyCycle);
+  ledcWriteChannel(channel, dutyCycle);
 }
 
 // Apply a target speed, inserting neutral before reverse when the ESC needs it
@@ -115,7 +116,9 @@ void applyMotor(MotorState &m, int target) {
 }
 
 // Callback when data is received
-void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, int len) {
+  const uint8_t *mac = info->src_addr;
+
   char macStr[18];
   snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
@@ -183,10 +186,8 @@ void setup() {
   Serial.print(RIGHT_CHANNEL);
   Serial.println(", 50 Hz, 14-bit");
   
-  ledcSetup(LEFT_CHANNEL, ESC_FREQ, ESC_RESOLUTION);
-  ledcSetup(RIGHT_CHANNEL, ESC_FREQ, ESC_RESOLUTION);
-  ledcAttachPin(LEFT_MOTOR_PIN, LEFT_CHANNEL);
-  ledcAttachPin(RIGHT_MOTOR_PIN, RIGHT_CHANNEL);
+  ledcAttachChannel(LEFT_MOTOR_PIN, ESC_FREQ, ESC_RESOLUTION, LEFT_CHANNEL);
+  ledcAttachChannel(RIGHT_MOTOR_PIN, ESC_FREQ, ESC_RESOLUTION, RIGHT_CHANNEL);
   
   // Start with both motors at neutral (0 speed)
   setMotorSpeed(LEFT_CHANNEL, 0);

@@ -25,10 +25,12 @@ REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNS_DIR = os.path.join(REPO_DIR, 'runs')
 
 EPISODE_FIELDS = ['iter', 'episode', 'total_reward', 'steps', 'start_dist_m',
-                  'final_dist_m', 'min_dist_m', 'reached', 'elapsed_s']
+                  'final_dist_m', 'min_dist_m', 'reached', 'goal_x_m', 'goal_y_m', 'score', 'noise_std',
+                  'elapsed_s']
 ITERATION_FIELDS = ['iter', 'elapsed_s', 'loss', 'reward_mean', 'reward_bound',
                     'success_rate', 'mean_final_dist_m', 'mean_min_dist_m',
-                    'mean_steps', 'train_steps_kept']
+                    'mean_steps', 'train_steps_kept', 'noise_std', 'score_mean', 'score_bound',
+                    'new_elites', 'memory_size', 'memory_success']
 
 
 def goal_distance_m(env, obs):
@@ -60,7 +62,9 @@ def write_config(run_dir, tag, env, hyperparams):
         'started': time.strftime('%Y-%m-%d %H:%M:%S'),
         'git_commit': _git('rev-parse', '--short', 'HEAD'),
         'git_dirty': bool(_git('status', '--porcelain', '--', '*.py')),
-        'goal': [float(v) for v in env.goal],
+        'goal': 'random' if getattr(env, 'random_goals', False) else [float(v) for v in env.goal],
+        'goal_distance_range_m': (list(env.goal_distance_range_m)
+                                  if getattr(env, 'random_goals', False) else None),
         'position_scale_m': env.position_scale_m,
         'max_episode_steps': getattr(env, 'max_episode_steps', None),
         'domain_randomization': (getattr(env, 'dr_ranges', None)
@@ -104,6 +108,10 @@ class TensorBoardLog:
         'reward_bound': 'reward/bound',
         'loss': 'train/loss',
         'train_steps_kept': 'train/steps_kept',
+        'score_mean': 'score/mean',
+        'score_bound': 'score/elite_bound',
+        'memory_success': 'score/memory_success_rate',
+        'noise_std': 'train/noise_std',
     }
 
     def __init__(self, run_dir):
