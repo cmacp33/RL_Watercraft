@@ -1,2 +1,29 @@
 # personal progress notes
 notes.md
+
+# Python bytecode and test caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local Python environments and generated package metadata
+.venv/
+venv/
+*.egg-info/
+
+# Generated ROS workspace output
+gym_gazebo/envs/ros_ws/build/
+gym_gazebo/envs/ros_ws/devel/
+gym_gazebo/envs/ros_ws/install/
+gym_gazebo/envs/ros_ws/log/
+gym_gazebo/envs/ros_ws/logs/
+
+# PlatformIO build output
+.pio/
+
+# macOS metadata
+.DS_Store
