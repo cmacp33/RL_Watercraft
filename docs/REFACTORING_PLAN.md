@@ -121,14 +121,19 @@ Capstone/
 │   │   │   ├── termination.py   # task success/failure, shared across algorithms
 │   │   │   └── metrics.py
 │   │   └── sampling.py          # training distribution and valid start/goal generation
-│   ├── envs/
-│   │   ├── pool.py              # Gymnasium Env composing task + simulator adapter
-│   │   ├── registration.py
-│   │   └── randomization.py     # measurement/actuator/physics perturbations
-│   ├── simulation/
-│   │   ├── gazebo_classic.py    # transitional ROS1 adapter
-│   │   ├── gazebo_sim.py        # modern adapter after qualification
-│   │   └── session.py           # lifecycle, readiness, deadlines, owned processes
+│   ├── gym/                     # single home for all Gymnasium integration
+│   │   ├── __init__.py
+│   │   ├── registration.py      # namespaced environment IDs
+│   │   ├── factory.py           # build configured environments for train/eval
+│   │   ├── checks.py            # Gymnasium compatibility/environment checks
+│   │   ├── envs/
+│   │   │   └── pool.py          # Env composing task + simulator backend
+│   │   ├── wrappers/            # time limits, observation/action transforms
+│   │   │   └── randomization.py # measurement/actuator/physics perturbations
+│   │   └── simulation/
+│   │       ├── gazebo_classic.py # transitional ROS1 backend
+│   │       ├── gazebo_sim.py    # modern backend after qualification
+│   │       └── session.py       # lifecycle, readiness, deadlines, owned processes
 │   ├── policies/
 │   │   ├── architectures/       # network definitions, separate from saved weights
 │   │   │   ├── mlp.py
@@ -205,7 +210,8 @@ Capstone/
 ├── tests/
 │   ├── unit/
 │   ├── contract/               # frames, preprocessing, action mapping, export parity
-│   ├── integration/            # real simulator lifecycle/reset/step tests
+│   ├── gym/                    # environment API, wrappers, simulator lifecycle/reset/step tests
+│   ├── integration/            # cross-component integration tests
 │   ├── replay/                 # fixed recorded/synthetic pose-camera fixtures
 │   └── hardware/               # explicit hardware test selection; never in default CI
 ├── tools/                      # dataset capture, migration, developer diagnostics
@@ -260,11 +266,19 @@ artifacts/
 
 Each evaluation references the exact policy hash and scenario/configuration versions. Each deployment session references its release/policy hash, robot profile, calibration and firmware identities. This keeps source code, trained policies, simulation results and real-world session records independently traceable. Artifacts are ignored locally and backed by durable storage; source-controlled manifests can reference selected published results.
 
+## One home for Gym integration
+
+All Gymnasium-specific application code lives under `src/watercraft/gym/`: environments, registration, construction, wrappers, randomization integration, environment checks, and the simulator backends/session lifecycle used by those environments. There is no separate top-level `envs/` or `simulation/` Python package. Training and simulation evaluation obtain environments through `watercraft.gym.factory`; algorithms do not implement their own copies of the environment.
+
+Keep reusable task rewards, task termination and metrics in `tasks/`, and policy preprocessing/inference in `core/` and `policies/`. These are shared domain components rather than Gym implementations. Gym wrappers call those shared functions instead of duplicating them. Real-boat `deployment/` uses live perception and hardware directly and does not depend on Gymnasium or launch a simulator.
+
+ROS package source, worlds, meshes and compiled Gazebo plugins remain together under the ROS/third-party build layout because they have their own build system. The Python Gym-to-Gazebo integration is entirely under `gym/simulation/`. Gym-specific automated tests are grouped under `tests/gym/`, following the repository's separate test layout.
+
 ## Dependency and runtime boundaries
 
 - `core`, `tasks`, and artifact manifest validation use the standard library/NumPy and validated configuration types. They must import successfully without ROS, Torch, OpenCV, or serial support.
 - `policies.architectures` and `training` own Torch; the deployed runtime imports `numpy_policy` without importing the trainer.
-- `envs` owns Gymnasium and calls a simulator backend. The simulator adapter owns ROS/Gazebo details, not reward or learning logic.
+- `gym` owns all Gymnasium integration, including environment factories, wrappers, checks and simulator backends. `gym/simulation` owns ROS/Gazebo interactions; shared task/reward and policy code remain independent of Gymnasium.
 - `perception` owns OpenCV; `hardware` owns pyserial and device calibration. Hardware conversion runs once after policy action limits.
 - CLI commands compose dependencies. No `sys.path` edits, import-time camera windows, serial opening, ROS initialization, or simulator launch.
 - Use optional dependency groups such as `train`, `vision`, `hardware`, `dev`; ROS/C++ dependencies remain in ROS manifests and pinned OS/container profiles.
@@ -411,15 +425,15 @@ Do not expect Catkin or Classic `ModelPlugin` sources to run unchanged on Gazebo
 | `training_scripts/run_logging.py` | `experiments`; keep historical CSV reader compatibility and record schema versions. |
 | `run_model.py` | `evaluation/runner.py` + evaluate CLI; support exact exported runtime. |
 | `plot_runs.py`, `compare_runs.py` | `evaluation/reports.py` + report CLI; legacy CSV import adapters. |
-| `pool_gym_v0.py` | Task/reward to `tasks`, sampling/randomization to dedicated modules, Gym API to `envs/pool`, ROS interactions to simulator adapter. |
-| `gazebo_env.py` | `simulation/session.py` and Classic backend; replace process ownership and lifecycle code. |
-| `gym_gazebo/__init__.py` | Explicit namespaced registration, e.g. `Watercraft/Pool-v1`; no simulator side effects. |
+| `pool_gym_v0.py` | Task/reward to `tasks`, sampling/randomization to dedicated modules, Gym API to `gym/envs/pool.py`, randomization integration to `gym/wrappers/randomization.py`, ROS interactions to `gym/simulation/`. |
+| `gazebo_env.py` | `gym/simulation/session.py` and Classic backend; replace process ownership and lifecycle code. |
+| `gym_gazebo/__init__.py` | `gym/registration.py`, with explicit namespaced registration, e.g. `Watercraft/Pool-v1`; no simulator side effects. |
 | `boat_gazebo` | Source-only `ros/legacy_ws/src/boat_gazebo`, then separate description/simulator/bringup packages on ROS2 migration. Select one canonical URDF/model-generation path; reconcile unused SDF template and duplicate marker assets. |
 | USV/wave plugins | Pinned `third_party/vrx_classic` source and patch inventory, integrated into legacy build by dependency configuration. Retain notices and required C++ tests. |
 | `nodes/boat_env.py`, `testenv.py` | Archive as legacy experiment after confirming no users; they are incomplete alternative environment implementations. |
 | `nodes/controller.py` | Preserve as manual simulator diagnostic or consolidate into baseline/control tooling. |
 | `real_env.py`, `real_env_ros2.py` | Remove unused stubs after reference checks; real runtime replaces them. |
-| Copied `spaces/`, `wrappers/`, generic `utils/` | Prove no active dependency, then remove; use Gymnasium maintained equivalents. Avoid repairing unused generic arm code. |
+| Copied `spaces/`, `wrappers/`, generic `utils/` | Prove no active dependency, then remove; use Gymnasium maintained equivalents. Any required project-specific wrappers belong in `gym/wrappers/`; avoid repairing unused generic arm code. |
 | `track_aruco_3d.py` | Preserve local work, extract geometry/perception/estimation/controller/runtime/UI responsibilities with fixtures. |
 | `track_aruco_v3.py`, `track_aruco_homo.py` | Retain validated alternative geometry if needed, otherwise archive after replay comparison. Pick a default from measured accuracy and stability, not filename version. |
 | Calibration/camera/marker utilities | Import-safe `perception` services + thin calibration/capture CLI/tools; eliminate absolute paths. |
