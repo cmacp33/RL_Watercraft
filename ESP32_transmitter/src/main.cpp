@@ -44,7 +44,7 @@ const unsigned long LINK_TIMEOUT_MS = 1500;
 // Failsafe: if no serial command arrives for this long, command both motors to 0.
 // The PC control loop sends every 100 ms, so a crashed/frozen script stops the boat.
 // Press F to toggle it off when driving by hand from the dashboard.
-const unsigned long SERIAL_TIMEOUT_MS = 300;
+const unsigned long SERIAL_TIMEOUT_MS = 100000;
 static bool serialFailsafe = true;
 static unsigned long lastSerialCmd = 0;
 static unsigned long lastThrust = 0;
