@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
-  "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libusv_gazebo_wind_plugin.pdb"
-  "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libusv_gazebo_wind_plugin.so"
+  "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libusv_gazebo_wind_plugin.pdb"
+  "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libusv_gazebo_wind_plugin.so"
   "CMakeFiles/usv_gazebo_wind_plugin.dir/src/usv_gazebo_wind_plugin.cc.o"
   "CMakeFiles/usv_gazebo_wind_plugin.dir/src/usv_gazebo_wind_plugin.cc.o.d"
 )

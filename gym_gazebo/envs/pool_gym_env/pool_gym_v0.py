@@ -7,6 +7,7 @@ import numpy as np
 from gym import spaces
 from gym_gazebo.envs import gazebo_env
 from gazebo_msgs.msg import ModelStates
+from gazebo_msgs.srv import GetModelState
 from std_srvs.srv import Empty
 from gym.utils import seeding
 import math
@@ -34,6 +35,8 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
 		self.pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
 		self.reset_proxy = rospy.ServiceProxy('/gazebo/reset_world', Empty)
+		# asks gzserver directly for the boat's current state (works while paused, never out of date)
+		self.model_state_proxy = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
 
 		# init pubs & subs
 		self.left_pub = rospy.Publisher('/boat/thrusters/left_thrust_cmd', Float32, queue_size=10)
@@ -92,6 +95,11 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		self.random_goals = False
 		self.goal_distance_range_m = (3.0, 12.0)  # from the spawn point; ~0.8 m/s -> <= ~15 s at 12 m
 		self.goal_bounds_m = 13.0                 # stay inside the pool walls at +-15 m
+
+		# where reset_world puts the boat (x, y in boat.launch); reset() checks it really got there
+		self.spawn_xy_m = (0.0, 0.0)
+		self.spawn_tolerance_m = 0.3
+		self.reset_attempts = 5
 
 	def sample_randomization(self):
 		r = self.dr_ranges
@@ -154,8 +162,10 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		except ValueError as error:
 			raise RuntimeError("Gazebo model_states does not contain the 'boat' model") from error
 
-		pose = model_states.pose[boat_index]
-		twist = model_states.twist[boat_index]
+		return self._observation_from(model_states.pose[boat_index], model_states.twist[boat_index])
+
+	def _observation_from(self, pose, twist):
+		"""Normalized boat-relative observation from a world-frame pose and twist."""
 		q = pose.orientation
 		yaw = math.atan2(
 			2.0 * (q.w * q.z + q.x * q.y),
@@ -240,39 +250,66 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		done = self.done_check(self.state, self.prev_state)
 
 		self.count += 1
-		info = {'sim_dt': sim_dt, 'goal_dist_m': self.goal_distance_m(), 'applied_action': action}
+		# Two different ways an episode ends. Reaching the goal is a real end: nothing more can be
+		# earned. Running out of steps is not: the boat could have carried on. Value-based methods
+		# (SAC/PPO) must only treat the first as terminal, so the timeout is flagged here under
+		# the key gym's TimeLimit wrapper uses.
+		reached = self.goal_distance_m() <= GOAL_RADIUS_M
+		info = {'sim_dt': sim_dt, 'goal_dist_m': self.goal_distance_m(), 'applied_action': action,
+				'reached': reached, 'TimeLimit.truncated': done and not reached}
 
       	# return state reward and done flag
 		return self.observe(self.state), step_reward, done, info
 
+	def _true_boat_state(self):
+		"""Boat pose and twist straight from gzserver (service call, so it reflects right now)."""
+		rospy.wait_for_service('/gazebo/get_model_state')
+		deadline = time.time() + 15.0 # wall-clock; the boat may still be spawning right after launch
+		while True:
+			result = self.model_state_proxy('boat', 'world')
+			if result.success:
+				return result.pose, result.twist
+			if time.time() > deadline:
+				raise RuntimeError("get_model_state failed: %s" % result.status_message)
+			time.sleep(0.2)
+
 	def reset(self):
 
-		# reset environment
-		rospy.wait_for_service('/gazebo/reset_world')
-		try:
-			self.reset_proxy()
-		except (rospy.ServiceException) as e:
-			print ("/gazebo/reset_world service call failed")
+		# Pause first so nothing moves between the reset and the reading below.
+		rospy.wait_for_service('/gazebo/pause_physics')
+		self.pause()
 
-		# goal is read in get_state, so pick it before the first observation
+		# Reset, then confirm with gzserver that the boat is back at the spawn point.
+		# The first observation used to come from the /gazebo/model_states topic, which could
+		# still deliver a message from before the reset: the episode then began with the previous
+		# episode's final position, giving a wrong start distance and a huge first-step reward.
+		rospy.wait_for_service('/gazebo/reset_world')
+		for attempt in range(1, self.reset_attempts + 1):
+			try:
+				self.reset_proxy()
+			except (rospy.ServiceException) as e:
+				print ("/gazebo/reset_world service call failed")
+			pose, twist = self._true_boat_state()
+			offset_m = math.hypot(pose.position.x - self.spawn_xy_m[0], pose.position.y - self.spawn_xy_m[1])
+			if offset_m <= self.spawn_tolerance_m:
+				break
+			print("reset: boat is %.2f m from spawn after reset_world (attempt %d/%d), retrying"
+				  % (offset_m, attempt, self.reset_attempts))
+		else:
+			raise RuntimeError("Boat did not return to spawn after %d reset_world calls" % self.reset_attempts)
+
+		# drop the cached topic message so step() can never reuse one from the previous episode
+		self._latest_model_states = None
+
+		# goal is read when building the observation, so pick it first
 		if self.random_goals:
 			self.goal = self.sample_goal()
 
-		# unpause simulation to make observation
-		rospy.wait_for_service('/gazebo/unpause_physics')
-		try:
-			self.unpause()
-		except (rospy.ServiceException) as e:
-			print ("/gazebo/unpause_physics service call failed")
-
-		self.state = self.get_state()
+		self.state = self._observation_from(pose, twist)
 		self.prev_state = self.state
-		self.pause()
 
 		self.count = 0
 		if self.domain_randomization:
 			self.sample_randomization()
 
 		return self.observe(self.state)
-
-        

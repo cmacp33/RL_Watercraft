@@ -1,4 +1,4 @@
-prefix=/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/install
+prefix=/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/install
 
 Name: boat_gazebo
 Description: Description of boat_gazebo

@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
-  "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libwavegauge_plugin.pdb"
-  "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libwavegauge_plugin.so"
+  "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libwavegauge_plugin.pdb"
+  "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libwavegauge_plugin.so"
   "CMakeFiles/wavegauge_plugin.dir/src/wavegauge_plugin.cc.o"
   "CMakeFiles/wavegauge_plugin.dir/src/wavegauge_plugin.cc.o.d"
 )

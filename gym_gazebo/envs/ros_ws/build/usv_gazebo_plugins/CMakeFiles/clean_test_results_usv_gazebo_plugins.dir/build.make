@@ -53,10 +53,10 @@ RM = /home/fizzer/.local/lib/python3.8/site-packages/cmake/data/bin/cmake -E rm 
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src
+CMAKE_SOURCE_DIR = /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build
+CMAKE_BINARY_DIR = /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build
 
 # Utility rule file for clean_test_results_usv_gazebo_plugins.
 
@@ -67,7 +67,7 @@ include usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/
 include usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/progress.make
 
 usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins:
-	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins && /usr/bin/python3 /opt/ros/noetic/share/catkin/cmake/test/remove_test_results.py /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/test_results/usv_gazebo_plugins
+	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins && /usr/bin/python3 /opt/ros/noetic/share/catkin/cmake/test/remove_test_results.py /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/test_results/usv_gazebo_plugins
 
 usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/codegen:
 .PHONY : usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/codegen
@@ -81,10 +81,10 @@ usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/build: c
 .PHONY : usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/build
 
 usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/clean:
-	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins && $(CMAKE_COMMAND) -P CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/cmake_clean.cmake
+	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins && $(CMAKE_COMMAND) -P CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/cmake_clean.cmake
 .PHONY : usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/clean
 
 usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/depend:
-	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src/usv_gazebo_plugins /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src/usv_gazebo_plugins /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : usv_gazebo_plugins/CMakeFiles/clean_test_results_usv_gazebo_plugins.dir/depend
 
