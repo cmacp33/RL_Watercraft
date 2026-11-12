@@ -53,10 +53,10 @@ RM = /home/fizzer/.local/lib/python3.8/site-packages/cmake/data/bin/cmake -E rm 
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src
+CMAKE_SOURCE_DIR = /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build
+CMAKE_BINARY_DIR = /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build
 
 # Utility rule file for geometry_msgs_generate_messages_py.
 
@@ -77,10 +77,10 @@ wave_gazebo_plugins/CMakeFiles/geometry_msgs_generate_messages_py.dir/build: geo
 .PHONY : wave_gazebo_plugins/CMakeFiles/geometry_msgs_generate_messages_py.dir/build
 
 wave_gazebo_plugins/CMakeFiles/geometry_msgs_generate_messages_py.dir/clean:
-	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/wave_gazebo_plugins && $(CMAKE_COMMAND) -P CMakeFiles/geometry_msgs_generate_messages_py.dir/cmake_clean.cmake
+	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/wave_gazebo_plugins && $(CMAKE_COMMAND) -P CMakeFiles/geometry_msgs_generate_messages_py.dir/cmake_clean.cmake
 .PHONY : wave_gazebo_plugins/CMakeFiles/geometry_msgs_generate_messages_py.dir/clean
 
 wave_gazebo_plugins/CMakeFiles/geometry_msgs_generate_messages_py.dir/depend:
-	cd /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/src/wave_gazebo_plugins /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/wave_gazebo_plugins /home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/build/wave_gazebo_plugins/CMakeFiles/geometry_msgs_generate_messages_py.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/src/wave_gazebo_plugins /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/wave_gazebo_plugins /home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/build/wave_gazebo_plugins/CMakeFiles/geometry_msgs_generate_messages_py.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : wave_gazebo_plugins/CMakeFiles/geometry_msgs_generate_messages_py.dir/depend
 

@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
-  "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libbuoyancy_gazebo_plugin.pdb"
-  "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libbuoyancy_gazebo_plugin.so"
+  "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libbuoyancy_gazebo_plugin.pdb"
+  "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libbuoyancy_gazebo_plugin.so"
   "CMakeFiles/buoyancy_gazebo_plugin.dir/src/buoyancy_gazebo_plugin.cc.o"
   "CMakeFiles/buoyancy_gazebo_plugin.dir/src/buoyancy_gazebo_plugin.cc.o.d"
   "CMakeFiles/buoyancy_gazebo_plugin.dir/src/polyhedron_volume.cc.o"

@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
-  "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libWavefieldModelPlugin.pdb"
-  "/home/fizzer/RL_Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libWavefieldModelPlugin.so"
+  "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libWavefieldModelPlugin.pdb"
+  "/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel/lib/libWavefieldModelPlugin.so"
   "CMakeFiles/WavefieldModelPlugin.dir/src/WavefieldModelPlugin.cc.o"
   "CMakeFiles/WavefieldModelPlugin.dir/src/WavefieldModelPlugin.cc.o.d"
 )
