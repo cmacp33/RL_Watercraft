@@ -21,17 +21,16 @@ import math
 import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from policy_contract import (NumpyPolicy, POSITION_SCALE_M, policy_observation,
-                             esp32_motor_action)
+from policy_contract import (NumpyPolicy, POSITION_SCALE_M, policy_observation, esp32_motor_action)
 
 # Serial and controller settings (no command-line arguments).
-SERIAL_PORT = '/dev/cu.usbserial-2140'
+SERIAL_PORT = '/dev/cu.usbserial-110'
 BAUD_RATE = 115200
 CONTROL_PERIOD_S = 0.1
 DRY_RUN = False  # True: display commands without opening the serial port.
 CONTROLLER = 'policy'  # 'p': turn then drive; 'policy': trained network.
-POLICY_WEIGHTS = Path(__file__).resolve().parents[2] / 'runs/20261102-181000_300steps/best.npz'
-TARGET_XY_M = (0.25, 0.25)  # Rectangle-center frame: X ID0->ID1, Y ID0->ID3.
+POLICY_WEIGHTS = Path(__file__).resolve().parents[2] / 'runs/20261103-125742_random_goals_v2/best.npz'
+TARGET_XY_M = (- 0.25, 0.25)  # Rectangle-center frame: X ID0->ID1, Y ID0->ID3.
 STOP_DISTANCE_M = 0.08
 HEADING_TOL_DEG = 12.0
 FORWARD_CMD = 100
@@ -292,6 +291,8 @@ def send_motor_command(ser, motor_left, motor_right):
 def send_policy_action(ser, action):
     """Apply shared v3 motor gains, deadband, limits, and channel swap."""
     left, right = map(int, esp32_motor_action(action))
+    print(f'\nMotor inputs: action={np.asarray(action).tolist()} '
+          f'| ESP32 left={left} right={right}', flush=True)
     send_motor_command(ser, left, right)
     return left, right
 
