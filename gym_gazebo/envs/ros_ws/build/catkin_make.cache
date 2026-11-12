@@ -1,2 +1,0 @@
-boat_gazebo:usv_gazebo_plugins:wave_gazebo_plugins
--DCATKIN_DEVEL_PREFIX=/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/devel -DCMAKE_INSTALL_PREFIX=/home/fizzer/RL-Watercraft/gym_gazebo/envs/ros_ws/install -G Unix Makefiles
