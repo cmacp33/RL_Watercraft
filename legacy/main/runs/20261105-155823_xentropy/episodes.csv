@@ -1,1 +1,0 @@
-iter,episode,total_reward,steps,start_dist_m,final_dist_m,min_dist_m,reached,goal_x_m,goal_y_m,score,noise_std,elapsed_s

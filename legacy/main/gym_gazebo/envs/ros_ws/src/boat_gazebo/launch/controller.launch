@@ -1,6 +1,0 @@
-<launch>
-    <node pkg="boat_gazebo"
-          type="controller.py"
-          name="controller"
-          output="screen"/>
-</launch>

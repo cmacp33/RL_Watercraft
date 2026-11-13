@@ -1,330 +1,209 @@
-## 2606 RL-Underactuated Watercraft
-
-### Key locations
-
-| What you need | Location |
-| --- | --- |
-| Configuration files | `configs/` — all settings use JSON |
-| Training setup | `configs/train.json` — choose environment, algorithm, run name, seed and training budget |
-| Start training | Run `python train.py` from the repository root |
-| Algorithm implementations | `watercraft/algorithms/` — current implementation: `cem.py` (xentropy) |
-| Algorithm settings | `configs/algorithms/` — current settings: `cem.json` |
-| Training outputs | `runs/<run-name>/` — saved config, checkpoints, CSV metrics and graphs |
-
-To add an algorithm, put its learning code in `watercraft/algorithms/<name>.py`
-and its settings in `configs/algorithms/<name>.json`. Connect it to the selection
-in `train.py` and the supported-algorithm validation in `watercraft/config.py`;
-then choose its name in `configs/train.json`. Adding a file alone does not register
-an algorithm. Environment interaction and policy loading should reuse the shared code.
-
-### Training/RL 
-Training starts at `train.py`; learning implementations are in
-`watercraft/algorithms/`. The older `training_scripts/` filenames remain as
-compatibility entry points.
-
-### Gym Environment 
-The gym env is defined in:
-```
-gym_gazebo/envs/pool_gym_env/pool_gym_v0.py
-```
-
-### Gazebo Environment
-All gazebo stuff (worlds,urdfs,models,launch files,etc) is in:
-```
-gym_gazebo/envs/ros_ws/src/boat_gazebo/
-```
-
-### Hydrodynamics Plugins
-The hydrodynamics plugins were cloned from https://github.com/osrf/vrx/tree/gazebo_classic and can be found in:
-```
-gym_gazebo/env/ros_ws/src/(wave_gazebo_plugins & usv_gazebo_plugins)
-```
 # 2654 Reinforcement Learning on Underactuated Watercraft
 
-All settings are in `configs/`. Commands take no arguments. CEM is the implemented
-training algorithm; PPO/SAC adapters can be added in `watercraft/algorithms/` later.
-The existing Gym environment, launch files, models, ROS packages and workspace
-structure have been preserved.
+Train a policy in Gazebo, evaluate it, and run it on the real boat. All settings
+are in JSON files; commands take no arguments.
+
+## Where things are
+
+| I want to… | Location | Command | Settings |
+| --- | --- | --- | --- |
+| Train in simulation | `src/watercraft/train.py` | `python -m watercraft.train` | `configs/train.json` |
+| Evaluate in simulation | `src/watercraft/evaluate.py` | `python -m watercraft.evaluate` | `configs/evaluate.json` |
+| Plot or compare runs | `src/watercraft/results.py` | `watercraft-plot`, `watercraft-compare` | `configs/evaluate.json` (`results`) |
+| Export a checkpoint to `.npz` | `src/watercraft/policy.py` | `python -m watercraft.policy` | `configs/evaluate.json` |
+| Run a policy on the real boat | `src/watercraft/deploy/` | `python -m watercraft.deploy` | `configs/deploy.json` |
+| Calibrate the camera, make markers | `vision_tracking/scripts/` | `python vision_tracking/scripts/<name>.py` | `vision_tracking/config.json` |
+| Change the Gym environment | `src/gym_gazebo/envs/pool_gym_env/pool_gym_v0.py` | | |
+| Change the simulated world | `src/gym_gazebo/envs/ros_ws/src/boat_gazebo/` | `catkin_make` | |
+| Flash the ESP32s | `firmware/transmitter/`, `firmware/receiver/` | `pio run` | `platformio.ini` |
+
+After `pip install -e .` the commands are also available as `watercraft-train`,
+`watercraft-evaluate`, `watercraft-export` and `watercraft-deploy`.
+
+```text
+RL-Watercraft/
+├── configs/
+│   ├── train.json            # train, algorithm, task, sim, policy
+│   ├── evaluate.json         # evaluate, results (plot/compare)
+│   └── deploy.json           # camera, serial, motor calibration, goal, weights
+├── src/
+│   ├── watercraft/
+│   │   ├── train.py          # entry point: train in sim
+│   │   ├── evaluate.py       # entry point: evaluate in sim
+│   │   ├── results.py        # plotting and run comparison
+│   │   ├── deploy/           # entry point: run a policy on the real boat
+│   │   │   ├── __main__.py   # camera loop, controller, display
+│   │   │   ├── vision.py     # ArUco marker geometry and pose
+│   │   │   └── motors.py     # serial send and stop
+│   │   ├── algorithms/cem.py # the training loop
+│   │   ├── sim_env.py        # applies train.json to the Gazebo environment
+│   │   ├── policy.py         # network, loading, export
+│   │   ├── contract.py       # observation and action conventions
+│   │   ├── config.py         # loads the config files
+│   │   └── logging.py        # run folders, CSV, TensorBoard
+│   ├── gym_gazebo/           # existing Gym/ROS package, unchanged
+│   └── policy_contract.py    # import used by gym_gazebo; re-exports watercraft.contract
+├── firmware/                 # transmitter/ and receiver/ PlatformIO projects
+├── vision_tracking/
+│   ├── config.json
+│   ├── calibration/          # camera_calibration.npz, images/
+│   ├── markers/              # printable ArUco files
+│   └── scripts/              # calibrate_camera, camera_preview, list_cameras, generate_markers
+├── tests/
+└── docs/
+```
+
+`runs/`, `.venv/` and the Catkin `build/` and `devel/` folders are local output
+and are not tracked, apart from three historical runs kept under `runs/`.
 
 ## Setup
 
-Use the project's working ROS/Gazebo Python environment for simulation. From this
-checkout, install the package in editable mode so tools and older script paths work:
+Use one virtual environment (or the system Python) per machine, at the
+repository root, never inside a source folder.
 
 ```bash
-python -m pip install -e '.[train,results]'
+python3 -m pip install --upgrade pip        # editable installs need pip 21.3 or newer
+python3 -m pip install -e '.[train,sim]'    # Gazebo machine
+python3 -m pip install -e '.[hardware]'     # laptop that drives the boat
 ```
 
-For the camera/serial machine:
+Without installing, set `PYTHONPATH` to the `src` folder instead:
 
 ```bash
-python -m pip install -e '.[train,hardware,results]'
+export PYTHONPATH=$PWD/src:$PYTHONPATH
 ```
 
-The `sim` optional group adds Gym if it is missing; use the Gym version already
-working on your simulation machine. ROS, Gazebo and Catkin are system dependencies;
-Python package installation does not install them. The original installation notes
-remain in `INSTALL.md` and the preserved copies under `legacy/`.
+ROS, Gazebo and Catkin are system dependencies. Build the workspace once and
+source it in every shell that runs the simulator:
+
+```bash
+source /opt/ros/noetic/setup.bash
+cd src/gym_gazebo/envs/ros_ws && catkin_make
+source src/gym_gazebo/envs/ros_ws/devel/setup.bash
+```
+
+The hydrodynamics plugins in `ros_ws/src/` (`wave_gazebo_plugins`,
+`usv_gazebo_plugins`) were cloned from https://github.com/osrf/vrx/tree/gazebo_classic.
 
 ## Train, evaluate and view results
 
-1. Edit `configs/train.json`: choose `"environment": "sim"` or `real`, the algorithm,
-   unique run name and seed. Algorithm settings are in `configs/algorithms/cem.json`.
-   Sim options are in `configs/sim.json`; physical device settings are in `configs/real.json`.
-2. Run `python train.py`.
-3. Edit `configs/evaluate.json`: choose the environment, run and checkpoint filename,
-   for example `best.npz`. Evaluation automatically loads the run's saved policy settings.
-4. Run `python evaluate.py`.
-5. Edit `configs/results.json` to select runs, then run `python plot.py` or
-   `python compare.py`. An empty run list selects existing runs with metrics.
+1. Edit `configs/train.json`. The `train` section sets the algorithm, a new run
+   name, the seed and the time budget; `algorithm` holds the CEM settings; `task`
+   the goal and reward; `sim` the environment options; `policy` the network size
+   and observation scales.
+2. Run `python -m watercraft.train`. Set `GAZEBO_GUI=false` to run headless.
+3. Edit the `evaluate` section of `configs/evaluate.json`: the run and a
+   checkpoint filename such as `best.npz`.
+4. Run `python -m watercraft.evaluate`.
+5. Edit the `results` section of `configs/evaluate.json` to select runs, then run
+   `watercraft-plot` or `watercraft-compare`. An empty run list selects every run
+   with metrics.
 
-Real trials require `"arm": true` in `configs/real.json` and an operator readiness
-acknowledgement before each episode. Collection faults stop motor commands. Learner
-updates happen between collections with motors stopped. These paths still require
-bench and water validation on the actual devices before relying on them. Camera
-reads and firmware watchdog response must be verified on that setup; host code alone
-cannot establish the physical stopping bound. Existing firmware behavior is preserved,
-including its currently configured transmitter timeout.
+Evaluation and deployment take the policy settings from the `config.json` saved
+beside the checkpoint they load, so the observation scales always match the
+weights.
 
-Resume training by setting `resume` to `runs/<name>/checkpoints/latest.pt` in
-`configs/train.json`, retaining the original environment/model/algorithm settings.
-Budgets can be extended. Set `initialize_from` instead to start a new run from
-compatible `.pth`, `.pt` or `.npz` actor weights. Neither option overwrites old runs.
+Resume training by setting `train.resume` to `runs/<name>/checkpoints/latest.pt`
+and keeping the original settings. Set `train.initialize_from` instead to start a
+new run from existing `.pth`, `.pt` or `.npz` weights.
 
-## Output locations
+To add an algorithm, put its `train(settings, env, directory, resume)` function in
+`src/watercraft/algorithms/<name>.py`, add the name to `AVAILABLE` in
+`src/watercraft/algorithms/__init__.py`, and select it with `train.algorithm`.
+
+### Output
 
 ```text
 runs/<name>/
 ├── config.json                  # fully resolved training settings
 ├── checkpoints/
-│   ├── best.pth / best.npz      # exact actor used by the best scored collection
+│   ├── best.pth / best.npz      # actor used by the best scored collection
 │   ├── latest.pt                # learner, optimizer, elite memory and RNG state
 │   └── final.pth / final.npz
 ├── training.csv                 # per-episode metrics
 ├── iterations.csv               # per-update metrics
 ├── summary.json
-├── tensorboard/                 # when TensorBoard is installed
-├── graphs/training.png          # generated after training or by plot.py
-├── transitions.csv              # physical collection only
-└── evaluations/
-    ├── sim/<timestamp>.csv/.json/.png
-    └── real/<timestamp>.csv/.json/.png
+├── tensorboard/
+├── graphs/training.png
+└── evaluations/sim/<timestamp>.csv/.json/.png
 ```
 
-Each evaluation's JSON identifies its checkpoint/hash and settings. Comparisons go
-to `runs/comparisons/` by default. Existing historical runs keep their original
-files and are readable by plotting/evaluation. New outputs are ignored by Git;
-back up run folders separately. `best` is selected using exploratory training
-collection, not an independent validation score; use `evaluate.py` for frozen-policy results.
+Comparisons go to `runs/comparisons/`. `best` is chosen from exploratory training
+episodes, not an independent validation score; use evaluation for frozen-policy
+results.
 
-## Gym and ROS stay where they are
+## Run on the real boat
 
-```text
-gym_gazebo/
-├── envs/
-│   ├── pool_gym_env/pool_gym_v0.py
-│   ├── gazebo_env.py
-│   └── ros_ws/
-│       ├── src/                 # original ROS packages, launch/world/URDF and models
-│       ├── build/               # Catkin generated, when built locally
-│       ├── devel/               # Catkin generated
-│       ├── install/             # when installed
-│       └── log/ or logs/        # when generated
-├── spaces/
-├── utils/
-├── wrappers/
-└── tests/
-```
+1. Edit `configs/deploy.json`: camera index, serial port, calibration file, goal,
+   motor calibration, and `policy_weights` (a `.npz` from a run folder).
+   `controller` is `policy` or `p` (the proportional controller).
+2. Leave `"arm": false` for a dry run that tracks and displays commands without
+   opening the serial port. Set it to `true` to drive the motors.
+3. Run `python -m watercraft.deploy`. Keep all four corner markers visible; `R`
+   recalibrates, `Q` or `Esc` quits. Motors stop when the marker is lost and on exit.
 
-No Gym/ROS files were relocated or rewritten. Build/devel/install/log paths remain
-ignored; already tracked generated files remain tracked in this change so the
-existing workspace is preserved. Ignore rules do not untrack them.
-`watercraft/envs/sim.py` configures the existing environment from JSON and stops
-only its owned launch process rather than calling the legacy global cleanup routine.
-
-## Other files and tools
-
-`watercraft/` contains shared contract, policy, logging, algorithm and hardware code.
-`policy_contract.py`, `run_model.py`, `plot_runs.py`, `compare_runs.py` and
-`training_scripts/` retain compatibility imports/entry points using config files.
-The alternative tracking implementations remain under `vision_tracking/`, with
-settings now loaded from JSON. Their original exact sources are also preserved.
-Firmware is under `firmware/transmitter/` and `firmware/receiver/`; board and port
-settings remain in each `platformio.ini`. Full original firmware directories,
-including local build products, are retained in `legacy/local_firmware/`.
-
-After the editable installation:
+Camera tools read `vision_tracking/config.json` and the camera settings in
+`configs/deploy.json`:
 
 ```bash
-python tools/camera_preview.py
-python tools/list_cameras.py
-python tools/calibrate_camera.py
-python tools/generate_markers.py
-python tools/test_sim.py
-python tools/test_reset.py
-python -m unittest discover -s tests -v
+python vision_tracking/scripts/list_cameras.py
+python vision_tracking/scripts/camera_preview.py
+python vision_tracking/scripts/calibrate_camera.py
+python vision_tracking/scripts/generate_markers.py
 ```
 
-Tool settings are in `configs/tools.json`; camera/serial settings are in
-`configs/real.json`. Calibration output is backed up before replacement. Existing
-calibration files, images and marker print assets are preserved under both their
-original paths and the organized `vision_tracking/calibration/` and `assets/markers/` paths.
-
-`legacy/main/` and `legacy/tracy-reorg/` preserve original work from both worktrees.
-`legacy/preserved_files.json` records the original file hashes. These copies are
-historical references; use the new root entry points for experiments. Source and
-settings in the original `/Users/tracysun/Projects/Capstone` worktree are untouched.
-
-## Current repository structure
-
-```text
-Capstone-tracy-reorg/
-├── train.py                         # config-based training entry point
-├── evaluate.py                      # evaluate a saved checkpoint
-├── plot.py                          # generate run graphs
-├── compare.py                       # compare selected runs
-├── configs/
-│   ├── train.json                   # environment, algorithm, run, budget, seed, resume
-│   ├── evaluate.json                # environment, run, checkpoint and episode count
-│   ├── results.json                 # runs and plotting/comparison settings
-│   ├── task.json                    # goal, reward and episode settings
-│   ├── sim.json                     # existing Gym environment settings
-│   ├── real.json                    # camera, serial, calibration and motor settings
-│   ├── policy.json                  # observation scales and network dimensions
-│   ├── tools.json                   # camera/calibration/diagnostic settings
-│   └── algorithms/cem.json          # CEM learning and exploration settings
-├── watercraft/
-│   ├── config.py                    # read and validate settings
-│   ├── contract.py                  # shared observations/actions
-│   ├── task.py                      # physical task reward and metrics
-│   ├── policy.py                    # model, inference and export
-│   ├── logging.py                   # run/checkpoint/CSV handling
-│   ├── results.py                   # plotting and comparison functions
-│   ├── algorithms/cem.py            # current training algorithm
-│   ├── envs/
-│   │   ├── sim.py                   # configure the existing Gym environment
-│   │   └── real.py                  # physical collection and operator resets
-│   └── hardware/
-│       ├── vision.py                # ArUco geometry and state estimation
-│       └── motors.py                # calibrated serial commands
-├── gym_gazebo/                      # preserved existing Gym structure
-│   └── envs/
-│       ├── pool_gym_env/            # existing pool environment
-│       ├── gazebo_env.py
-│       └── ros_ws/
-│           ├── src/                 # ROS packages, launch, worlds, models and plugins
-│           ├── build/               # generated locally by Catkin
-│           ├── devel/               # generated locally by Catkin
-│           └── install/, log/, logs/ # present when generated locally
-├── firmware/
-│   ├── transmitter/
-│   └── receiver/
-├── tools/                           # camera, calibration, marker and sim diagnostics
-├── assets/markers/                  # markers and print assets
-├── tests/                           # contract and refactor checks
-├── vision_tracking/                 # tracking implementations and calibration
-│   └── calibration/                 # camera calibration and images
-├── training_scripts/                # compatibility entry points
-├── saved_weights/                   # preserved historical weights
-├── runs/                            # historical and new experiment outputs
-├── legacy/                          # preserved original work from both worktrees
-├── docs/
-└── pyproject.toml                   # package and dependency settings
-```
-
-### Train with this structure
-
-Run commands from the `tracy-reorg` worktree. On the simulation machine, first
-activate the working ROS/Gazebo Python environment and source its ROS and Catkin
-workspace setup as usual. The ROS workspace remains at
-`gym_gazebo/envs/ros_ws/`.
+## Tests and diagnostics
 
 ```bash
-cd /Users/tracysun/Projects/Capstone-tracy-reorg
-python -m pip install -e '.[train,results]'
+python -m unittest discover -s tests -v     # no ROS, camera or serial port needed
+python tests/sim_diagnostic.py              # random actions in Gazebo
+python tests/reset_diagnostic.py            # checks that the world resets
 ```
 
-On another machine, use that machine's checkout path. Installation is needed once
-per Python environment; it does not install ROS or Gazebo.
+## Original installation notes (Ubuntu 18.04, ROS Melodic)
 
-1. Edit `configs/train.json`. For a new simulation run:
+These notes come from the gym-gazebo project this repository started from. The
+current simulation machine runs ROS Noetic.
 
-   ```json
-   {
-     "environment": "sim",
-     "algorithm": "cem",
-     "run": "sim_cem_01",
-     "seed": 42,
-     "minutes": 60,
-     "max_iterations": null,
-     "resume": null,
-     "initialize_from": null,
-     "auto_plot": true
-   }
-   ```
+#### Basic requirements
+- ROS Melodic: Desktop-Full Install recommended, includes Gazebo 9.0.0 (http://wiki.ros.org/melodic/Installation/Ubuntu).
+- Gazebo 9.0.0
 
-   Choose a new `run` name for each experiment. `minutes` is the training time
-   budget, checked between batches; `max_iterations` can optionally limit updates.
-   CEM is currently the only implemented algorithm.
+#### ROS Melodic related dependencies
+```
+sudo apt-get install \
+python-pip python3-vcstool python3-pyqt4 \
+pyqt5-dev-tools \
+libbluetooth-dev libspnav-dev \
+pyqt4-dev-tools libcwiid-dev \
+cmake gcc g++ qt4-qmake libqt4-dev \
+libusb-dev libftdi-dev \
+python3-defusedxml python3-vcstool \
+ros-melodic-octomap-msgs        \
+ros-melodic-joy                 \
+ros-melodic-geodesy             \
+ros-melodic-octomap-ros         \
+ros-melodic-control-toolbox     \
+ros-melodic-pluginlib	       \
+ros-melodic-trajectory-msgs     \
+ros-melodic-control-msgs	       \
+ros-melodic-std-srvs 	       \
+ros-melodic-nodelet	       \
+ros-melodic-urdf		       \
+ros-melodic-rviz		       \
+ros-melodic-kdl-conversions     \
+ros-melodic-eigen-conversions   \
+ros-melodic-tf2-sensor-msgs     \
+ros-melodic-pcl-ros \
+ros-melodic-navigation \
+ros-melodic-sophus
+```
 
-2. Adjust `configs/algorithms/cem.json` for batch size, learning rate, exploration,
-   elite memory and stopping settings. Adjust `configs/sim.json`, `configs/task.json`
-   and `configs/policy.json` for the environment, task and policy respectively.
-
-3. Start training, with no command-line options:
-
-   ```bash
-   python train.py
-   ```
-
-   Outputs go to `runs/sim_cem_01/`: checkpoints in `checkpoints/`, episode metrics
-   in `training.csv`, update metrics in `iterations.csv`, TensorBoard logs in
-   `tensorboard/` when available, and the graph in `graphs/training.png` when
-   `auto_plot` is enabled. The exact configuration is saved as `config.json`.
-
-4. To resume that run, keep its original settings and set this in
-   `configs/train.json`, then run `python train.py` again:
-
-   ```json
-   {
-     "resume": "runs/sim_cem_01/checkpoints/latest.pt",
-     "initialize_from": null
-   }
-   ```
-
-   Extend the time/update budget if needed. To start a separate run from existing
-   actor weights, instead use a new run name, leave `"resume": null`, and set
-   `initialize_from` to the compatible checkpoint path.
-
-5. To evaluate after training, edit `configs/evaluate.json`:
-
-   ```json
-   {
-     "environment": "sim",
-     "run": "sim_cem_01",
-     "checkpoint": "best.npz",
-     "episodes": 20,
-     "seed": 0,
-     "noise": 0.0,
-     "goal": null,
-     "random_goals": false,
-     "randomize": false,
-     "auto_plot": true
-   }
-   ```
-
-   Then run:
-
-   ```bash
-   python evaluate.py
-   ```
-
-   It loads `runs/sim_cem_01/checkpoints/best.npz` without updating weights and
-   writes timestamped results, settings and a graph under
-   `runs/sim_cem_01/evaluations/sim/`.
-
-For real training, install the hardware dependencies, set `"environment": "real"` and
-a new run name in `configs/train.json`, and configure the camera, calibration,
-serial connection, physical goal and motor limits in `configs/real.json`. Physical
-actuation requires `"arm": true` there and operator readiness before every episode.
-The command remains `python train.py`; results use the same run-folder layout.
+#### Install Python Packages:
+```
+sudo pip install gym
+sudo apt-get install python-skimage
+sudo pip install h5py
+pip install tensorflow-gpu (if you have a gpu if not then just pip install tensorflow)
+sudo pip install keras
+```

@@ -1,1 +1,0 @@
-iter,elapsed_s,loss,reward_mean,reward_bound,success_rate,mean_final_dist_m,mean_min_dist_m,mean_steps,train_steps_kept,noise_std,score_mean,score_bound,new_elites,memory_size,memory_success

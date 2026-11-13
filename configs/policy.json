@@ -1,9 +1,0 @@
-{
-  "observation_size": 6,
-  "hidden_size": 128,
-  "action_size": 2,
-  "position_scale_m": 20.0,
-  "forward_speed_scale_mps": 3.0,
-  "yaw_rate_scale_radps": 2.0,
-  "export_numpy": true
-}

@@ -1,7 +1,0 @@
-{
-  "runs": [],
-  "smooth": 3,
-  "x": "minutes",
-  "last_iterations": 5,
-  "comparison_output": "runs/comparisons"
-}

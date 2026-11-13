@@ -1,23 +1,20 @@
 """Integration checks without opening ROS, cameras, serial ports or motors."""
 import copy
-import hashlib
 import json
 from pathlib import Path
 import tempfile
-import time
 import unittest
 from unittest.mock import patch
 import numpy as np
 import torch
 from watercraft.config import resolve, ROOT, run_path
-from watercraft.policy import build, export, load, TorchPolicy
+from watercraft.policy import build, load, torch_load
 from watercraft.logging import create_run, CsvLog
-from watercraft.algorithms.cem import train, episode_score, Episode
-from evaluate import evaluate, EVAL_FIELDS
+from watercraft.algorithms.cem import train
+from watercraft.evaluate import evaluate, EVAL_FIELDS
 
 
 class FakePool:
-    is_real = True  # fake stop/close, without importing ROS
     def __init__(self):
         self.goal = np.array([1., 0.])
         self.goal_radius_m = 0.1
@@ -36,10 +33,8 @@ class FakePool:
         self.steps += 1
         self.distance = max(0.0, 1.0 - self.steps / 2)
         return np.zeros(6, dtype=np.float32), 1., self.steps >= 2, {'goal_dist_m': self.distance, 'sim_dt': .1}
-    def stop(self):
+    def pause(self):  # what watercraft.sim_env.stop calls on the Gazebo environment
         self.stopped += 1
-    def close(self):
-        self.stop()
 
 
 class RefactorTests(unittest.TestCase):
@@ -77,7 +72,7 @@ class RefactorTests(unittest.TestCase):
             result = train(c, env, directory)
             self.assertEqual(result['iteration'], 1)
             checkpoint = directory / 'checkpoints/latest.pt'
-            resumed = torch.load(checkpoint, weights_only=False)
+            resumed = torch_load(checkpoint)
             c['train']['max_iterations'] = 2
             result = train(c, env, directory, resumed)
             self.assertEqual(result['iteration'], 2)
@@ -109,23 +104,20 @@ class RefactorTests(unittest.TestCase):
                     dirs.append(create_run(c))
             torch.manual_seed(12);np.random.seed(12)
             train(c, FakePool(), dirs[0])
-            snapshot = torch.load(dirs[0]/'checkpoints/latest.pt', weights_only=False)
+            snapshot = torch_load(dirs[0]/'checkpoints/latest.pt')
             c['train']['max_iterations']=2
             train(c, FakePool(), dirs[0], copy.deepcopy(snapshot))
             train(c, FakePool(), dirs[1], copy.deepcopy(snapshot))
-            a=torch.load(dirs[0]/'checkpoints/final.pth', weights_only=True)
-            b=torch.load(dirs[1]/'checkpoints/final.pth', weights_only=True)
+            a=torch_load(dirs[0]/'checkpoints/final.pth')
+            b=torch_load(dirs[1]/'checkpoints/final.pth')
             for key in a:
-                torch.testing.assert_close(a[key],b[key],rtol=0,atol=0)
+                np.testing.assert_array_equal(a[key].numpy(),b[key].numpy())
 
     def test_bad_config_and_paths_fail_before_devices(self):
         from watercraft.config import validate
         c=self.settings();c['algorithm']['batch_size']=0
         with self.assertRaises(ValueError):validate(c,'train')
         with self.assertRaises(ValueError):run_path('../outside')
-        from watercraft.envs.real import RealEnv
-        with self.assertRaisesRegex(ValueError,'arm'):
-            RealEnv(resolve('train'),'train',42)
 
     def test_best_checkpoint_matches_collected_model(self):
         c=self.settings()
@@ -136,12 +128,12 @@ class RefactorTests(unittest.TestCase):
                 directory=create_run(c)
             torch.manual_seed(9)
             train(c,FakePool(),directory)
-            best=torch.load(directory/'checkpoints/best.pth',weights_only=True)
+            best=torch_load(directory/'checkpoints/best.pth')
             for key in expected:
-                torch.testing.assert_close(best[key],expected[key],rtol=0,atol=0)
+                np.testing.assert_array_equal(best[key].numpy(),expected[key].numpy())
 
     def test_json_evaluation_reads_new_and_historical_configs(self):
-        import evaluate as entrypoint
+        import watercraft.evaluate as entrypoint
         c = self.settings()
         c['evaluate'] = resolve('evaluate')['evaluate']
         c['evaluate'].update(checkpoint='best.pth', episodes=1, auto_plot=False)
@@ -159,42 +151,12 @@ class RefactorTests(unittest.TestCase):
                 self.assertEqual(json.loads(metadata[0].read_text())['status'], 'complete')
                 self.assertFalse(list(directory.rglob('*.yaml')))
 
-    def test_preserved_files_have_original_hashes(self):
-        records=json.loads((ROOT/'legacy/preserved_files.json').read_text())
-        for record in records:
-            f=ROOT/'legacy'/record['worktree']/record['path']
-            self.assertEqual(hashlib.sha256(f.read_bytes()).hexdigest(),record['sha256'],str(f))
-
     def test_geometry_retains_existing_frame_convention(self):
-        from watercraft.hardware.vision import rectangle_from_centers
+        from watercraft.deploy.vision import rectangle_from_centers
         corners=np.array([[0,0,2],[2,0,2],[2,1,2],[0,1,2]],dtype=float)
         geometry=rectangle_from_centers(corners)
         np.testing.assert_allclose(geometry['center'],[1,.5,2])
         np.testing.assert_allclose(geometry['T_origin_from_camera'] @ geometry['T_camera_from_origin'],np.eye(4))
-
-    def test_physical_episode_and_fault_stop(self):
-        from watercraft.envs.real import RealEnv
-        class Motors:
-            def __init__(self):self.stops=0
-            def act(self,action):return (1,1)
-            def stop(self):self.stops+=1
-            def close(self):self.stop()
-        class Camera:
-            def reset(self):pass
-            def read(self):return dict(x=.25,y=.25,yaw=0.,vx=0.,vy=0.,yaw_rate=0.,timestamp=time.monotonic(),inside=True)
-            def close(self):pass
-        c=self.settings();c['real']['arm']=True;c['real']['control_period_s']=.001
-        m=Motors();camera=Camera()
-        e=RealEnv(c,'train',42,camera,m,lambda:None)
-        try:
-            e.reset()
-            obs,reward,done,info=e.step([0,0])
-            self.assertTrue(done)
-            self.assertTrue(info['reached'])
-            with patch.object(camera,'read',side_effect=RuntimeError('marker lost')):
-                with self.assertRaisesRegex(RuntimeError,'marker lost'):e.step([.1,.1])
-            self.assertGreaterEqual(m.stops,3)
-        finally:e.close()
 
 if __name__ == '__main__':
     unittest.main()

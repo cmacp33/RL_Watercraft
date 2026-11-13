@@ -3,10 +3,10 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gym-gazebo"
+name = "watercraft"
 version = "0.1.0"
 description = "Configuration-based watercraft experiments with the existing Gym/Gazebo workspace"
-requires-python = ">=3.9"
+requires-python = ">=3.8"
 dependencies = ["numpy"]
 
 [project.optional-dependencies]
@@ -15,9 +15,18 @@ sim = ["gym"]
 hardware = ["opencv-contrib-python", "pyserial"]
 results = ["matplotlib"]
 
+[project.scripts]
+watercraft-train = "watercraft.train:main"
+watercraft-evaluate = "watercraft.evaluate:main"
+watercraft-plot = "watercraft.results:plot_main"
+watercraft-compare = "watercraft.results:compare_main"
+watercraft-export = "watercraft.policy:export_main"
+watercraft-deploy = "watercraft.deploy.__main__:main"
+
 [tool.setuptools]
-py-modules = ["policy_contract", "train", "evaluate", "plot", "compare", "run_model", "plot_runs", "compare_runs"]
+package-dir = {"" = "src"}
+py-modules = ["policy_contract"]
 
 [tool.setuptools.packages.find]
-include = ["watercraft*", "gym_gazebo*", "training_scripts*", "tools*"]
-exclude = ["legacy*"]
+where = ["src"]
+include = ["watercraft*", "gym_gazebo*"]
