@@ -10,7 +10,7 @@ import torch
 from watercraft.config import resolve, ROOT, run_path
 from watercraft.policy import build, load, torch_load
 from watercraft.logging import create_run, CsvLog
-from watercraft.algorithms.cem import train
+from watercraft.algorithms.xentropy import train
 from watercraft.evaluate import evaluate, EVAL_FIELDS
 
 
