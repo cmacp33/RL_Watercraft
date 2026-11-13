@@ -25,29 +25,32 @@ from policy_contract import (NumpyPolicy, POSITION_SCALE_M, policy_observation,
                              esp32_motor_action)
 
 # Serial and controller settings (no command-line arguments).
-SERIAL_PORT = '/dev/cu.usbserial-2140'
-BAUD_RATE = 115200
-CONTROL_PERIOD_S = 0.1
-DRY_RUN = False  # True: display commands without opening the serial port.
-CONTROLLER = 'policy'  # 'p': turn then drive; 'policy': trained network.
-POLICY_WEIGHTS = Path(__file__).resolve().parents[2] / 'runs/20261102-181000_300steps/best.npz'
-TARGET_XY_M = (0.25, 0.25)  # Rectangle-center frame: X ID0->ID1, Y ID0->ID3.
-STOP_DISTANCE_M = 0.08
-HEADING_TOL_DEG = 12.0
-FORWARD_CMD = 100
-TURN_CMD_MIN = 50
-TURN_CMD_MAX = 90
-TURN_KP = 1.0
-MAX_ACTION = 0.4
+from watercraft.config import load as load_config, path as config_path
+_SETTINGS = load_config("real")
 
-CAM_INDEX = 0
-CORNER_IDS = (0, 1, 2, 3)
-TARGET_ID = 4
-MARKER_LENGTH_M = 0.04
-N_CALIB_FRAMES = 5
-AXIS_LENGTH_M = 0.05
-PRINT_FULL_TRANSFORMS = False  # Enable verbose matrices each frame if needed.
-CALIB_FILE = Path(__file__).with_name('camera_calibration.npz')
+SERIAL_PORT = _SETTINGS['serial_port']
+BAUD_RATE = _SETTINGS['baud_rate']
+CONTROL_PERIOD_S = _SETTINGS['control_period_s']
+DRY_RUN = not _SETTINGS["arm"]
+CONTROLLER = _SETTINGS['controller']
+POLICY_WEIGHTS = config_path(_SETTINGS["policy_weights"])
+TARGET_XY_M = tuple(_SETTINGS["goal"])
+STOP_DISTANCE_M = _SETTINGS["goal_radius_m"]
+HEADING_TOL_DEG = _SETTINGS['heading_tolerance_deg']
+FORWARD_CMD = _SETTINGS['forward_command']
+TURN_CMD_MIN = _SETTINGS['turn_command_min']
+TURN_CMD_MAX = _SETTINGS['turn_command_max']
+TURN_KP = _SETTINGS['turn_kp']
+MAX_ACTION = _SETTINGS['max_action']
+
+CAM_INDEX = _SETTINGS['camera_index']
+CORNER_IDS = list(_SETTINGS["corner_ids"])
+TARGET_ID = _SETTINGS['target_id']
+MARKER_LENGTH_M = _SETTINGS['marker_length_m']
+N_CALIB_FRAMES = _SETTINGS['calibration_frames']
+AXIS_LENGTH_M = _SETTINGS['axis_length_m']
+PRINT_FULL_TRANSFORMS = _SETTINGS['print_full_transforms']
+CALIB_FILE = str(config_path(_SETTINGS["calibration_file"]))
 
 
 def marker_object_points(length_m):

@@ -1,0 +1,12 @@
+{
+  "environment": "sim",
+  "run": "sim_cem_01",
+  "checkpoint": "best.npz",
+  "episodes": 20,
+  "seed": 0,
+  "noise": 0.0,
+  "goal": null,
+  "random_goals": false,
+  "randomize": false,
+  "auto_plot": true
+}

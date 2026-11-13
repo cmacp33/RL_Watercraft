@@ -1,0 +1,11 @@
+{
+  "environment": "sim",
+  "algorithm": "cem",
+  "run": "sim_cem_01",
+  "seed": 42,
+  "minutes": 60,
+  "max_iterations": null,
+  "resume": null,
+  "initialize_from": null,
+  "auto_plot": true
+}

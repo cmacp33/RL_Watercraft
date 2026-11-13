@@ -1,0 +1,36 @@
+{
+  "camera_scan_count": 10,
+  "capture_directory": "vision_tracking/calibration/images",
+  "marker_directory": "assets/markers",
+  "marker_ids": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "marker_pixels": 400,
+  "preview_window": "Camera preview",
+  "calibration_images": "vision_tracking/calibration/images/*.jpg",
+  "board_squares": [
+    11,
+    8
+  ],
+  "square_length_m": 0.02,
+  "board_marker_length_m": 0.0145,
+  "legacy_pattern": true,
+  "board_pixels": [
+    1100,
+    800
+  ],
+  "calibration_test_image": "vision_tracking/calibration/images/calibration_TEST.jpg",
+  "verify_corner_ids": [
+    5,
+    10,
+    33,
+    44,
+    55
+  ],
+  "sim_test_seconds": 25.0,
+  "reset_tolerance": 0.1
+}

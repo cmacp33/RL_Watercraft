@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gym-gazebo"
+version = "0.1.0"
+description = "Configuration-based watercraft experiments with the existing Gym/Gazebo workspace"
+requires-python = ">=3.9"
+dependencies = ["numpy"]
+
+[project.optional-dependencies]
+train = ["torch", "tensorboard", "matplotlib"]
+sim = ["gym"]
+hardware = ["opencv-contrib-python", "pyserial"]
+results = ["matplotlib"]
+
+[tool.setuptools]
+py-modules = ["policy_contract", "train", "evaluate", "plot", "compare", "run_model", "plot_runs", "compare_runs"]
+
+[tool.setuptools.packages.find]
+include = ["watercraft*", "gym_gazebo*", "training_scripts*", "tools*"]
+exclude = ["legacy*"]

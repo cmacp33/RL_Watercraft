@@ -27,3 +27,7 @@ gym_gazebo/envs/ros_ws/logs/
 
 # macOS metadata
 .DS_Store
+
+# New experiments and comparison outputs (existing tracked runs are preserved)
+runs/
+firmware/**/.pio/

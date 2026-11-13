@@ -1,4 +1,3 @@
-import argparse
 import cv2
 import numpy as np
 from collections import defaultdict
@@ -12,42 +11,45 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from policy_contract import NumpyPolicy, POSITION_SCALE_M, PoseObservationAdapter, esp32_motor_action
 
 # ====== SERIAL Settings
-SERIAL_PORT    = "/dev/cu.usbserial-2140"   # macOS; Linux /dev/ttyUSB0, Windows COMx. Override with --port
-BAUD_RATE      = 115200
-CONTROL_PERIOD_S = 0.1            # same as the sim (pool_gym_v0 control_period_s)
+from watercraft.config import load as load_config, path as config_path
+_SETTINGS = load_config("real")
+
+SERIAL_PORT = _SETTINGS['serial_port']
+BAUD_RATE = _SETTINGS['baud_rate']
+CONTROL_PERIOD_S = _SETTINGS['control_period_s']
 
 # ===== INPUT =====
-CAM_INDEX = 0
+CAM_INDEX = _SETTINGS['camera_index']
 DICT = cv2.aruco.DICT_4X4_50
-CALIB_FILE = "src/camera_calibration.npz" # saved from charuco_calibration.py file 
+CALIB_FILE = str(config_path(_SETTINGS["calibration_file"]))
 
-TARGET = (25, 25)
-STOP_DISTANCE_CM = 8.0
-HEADING_TOL_DEG = 12.0
-FORWARD_CMD = 100
-TURN_CMD_MIN = 50
-TURN_CMD_MAX = 90
-TURN_KP = 1.0
+TARGET = tuple(v * 100 for v in _SETTINGS["goal"])
+STOP_DISTANCE_CM = _SETTINGS["goal_radius_m"] * 100
+HEADING_TOL_DEG = _SETTINGS['heading_tolerance_deg']
+FORWARD_CMD = _SETTINGS['forward_command']
+TURN_CMD_MIN = _SETTINGS['turn_command_min']
+TURN_CMD_MAX = _SETTINGS['turn_command_max']
+TURN_KP = _SETTINGS['turn_kp']
 
 # take the average of how many average frames to use for calibration
-N_CALIB_FRAMES = 10 
+N_CALIB_FRAMES = _SETTINGS["legacy_calibration_frames"]
 
-FRAME_W, FRAME_H = 1920, 1080
+FRAME_W, FRAME_H = _SETTINGS["frame_width"], _SETTINGS["frame_height"]
 
-ID_BL = 0  # bottom-left
-ID_BR = 1  # bottom-right
-ID_TR = 2  # top-right
-ID_TL = 3  # top-left
+ID_BL = _SETTINGS["corner_ids"][0]
+ID_BR = _SETTINGS["corner_ids"][1]
+ID_TR = _SETTINGS["corner_ids"][2]
+ID_TL = _SETTINGS["corner_ids"][3]
 
-ID_INSIDE = 4 # object to track
-WATER_ID = 4 # id on the water surfacel used this for extrinsic calibration
+ID_INSIDE = _SETTINGS['target_id']
+WATER_ID = _SETTINGS['target_id']
 
-W = 37.0 # cm
-H = 27.0 # cm
+W = _SETTINGS["rim_width_cm"]
+H = _SETTINGS["rim_height_cm"]
 
-CORNER_IDS = [ID_BL, ID_BR, ID_TR, ID_TL]
+CORNER_IDS = list(_SETTINGS["corner_ids"])
 
-MARKER_LENGTH_CM = 4.0
+MARKER_LENGTH_CM = _SETTINGS["marker_length_m"] * 100
 
 # Define positioning of A singular marker
 _half = MARKER_LENGTH_CM / 2.0
@@ -453,20 +455,13 @@ def send_policy_action(ser, action):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Camera -> controller -> ESP32 serial loop")
-    parser.add_argument("--controller", choices=["p", "policy"], default="p",
-                        help="p = hand-written turn-then-drive controller, policy = trained network")
-    parser.add_argument("--weights", default=None,
-                        help="policy .npz from training_scripts/export_policy.py (needed for --controller policy)")
-    parser.add_argument("--target", type=float, nargs=2, default=TARGET, metavar=("X_CM", "Y_CM"),
-                        help="goal in water-frame cm")
-    parser.add_argument("--max-action", type=float, default=0.4,
-                        help="cap on |action| before motor calibration (1.0 = full usable thrust)")
-    parser.add_argument("--port", default=SERIAL_PORT, help="serial port of the transmitter ESP32")
-    parser.add_argument("--dry-run", action="store_true", help="don't open serial; print commands only")
-    parser.add_argument("--cam", type=int, default=CAM_INDEX,
-                        help="camera index (0 is usually the laptop webcam; try 1 for a USB camera)")
-    return parser.parse_args()
+    """Historical function name; settings are read from JSON, not CLI arguments."""
+    from types import SimpleNamespace
+    from watercraft.config import load
+    c = load('real')
+    return SimpleNamespace(controller=c['controller'], weights=c['policy_weights'],
+        target=[v * 100 for v in c['goal']], max_action=c['max_action'], port=c['serial_port'],
+        dry_run=not c['arm'], cam=c['camera_index'])
 
 
 def main():

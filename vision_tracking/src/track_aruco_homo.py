@@ -13,22 +13,25 @@ This uses 2D only homography, no 3D pose estimation.
 This version is DEPRECATED. See track_aruco.py for more robust version.
 '''
 # ===== INPUTS =====
-CAM_INDEX = 0
+from watercraft.config import load as load_config, path as config_path
+_SETTINGS = load_config("real")
+
+CAM_INDEX = _SETTINGS['camera_index']
 DICT = cv2.aruco.DICT_4X4_50
 
-FRAME_W, FRAME_H = 1920, 1080
+FRAME_W, FRAME_H = _SETTINGS["frame_width"], _SETTINGS["frame_height"]
 
-ID_BL = 0  # bottom-left
-ID_BR = 1  # bottom-right
-ID_TR = 2  # top-right
-ID_TL = 3  # top-left
+ID_BL = _SETTINGS["corner_ids"][0]
+ID_BR = _SETTINGS["corner_ids"][1]
+ID_TR = _SETTINGS["corner_ids"][2]
+ID_TL = _SETTINGS["corner_ids"][3]
 
-ID_INSIDE = 4 # object to track
+ID_INSIDE = _SETTINGS['target_id']
 
-N_CALIB_FRAMES = 10
+N_CALIB_FRAMES = _SETTINGS["legacy_calibration_frames"]
 
-W = 50 #cm
-H = 30 #cm
+W = _SETTINGS["homography_width_cm"]
+H = _SETTINGS["homography_height_cm"]
 
 
 def marker_center(corners_4x2: np.ndarray) -> np.ndarray:

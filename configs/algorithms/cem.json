@@ -1,0 +1,13 @@
+{
+  "batch_size": 8,
+  "percentile": 70,
+  "learning_rate": 0.01,
+  "noise_start": 0.5,
+  "noise_end": 0.1,
+  "noise_decay_iterations": 30,
+  "elite_memory": 50,
+  "train_steps_per_iteration": 10,
+  "reference_speed_mps": 2.0,
+  "stop_success": 0.9,
+  "stop_iterations": 3
+}
