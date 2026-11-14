@@ -35,7 +35,7 @@ RL-Watercraft/
 │   ├── watercraft/
 │   │   ├── train.py  evaluate.py  results.py
 │   │   ├── deploy/     __main__.py  vision.py  motors.py
-│   │   ├── algorithms/ cem.py
+│   │   ├── algorithms/ xentropy.py
 │   │   └── sim_env.py  policy.py  contract.py  config.py  logging.py
 │   ├── gym_gazebo/     unchanged, including envs/ros_ws/
 │   └── policy_contract.py

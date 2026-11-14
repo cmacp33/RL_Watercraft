@@ -1,6 +1,6 @@
 {
   "evaluate": {
-    "run": "sim_cem_01",
+    "run": "xentropy_test",
     "checkpoint": "best.npz",
     "episodes": 20,
     "seed": 0,

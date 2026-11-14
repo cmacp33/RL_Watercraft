@@ -1,9 +1,9 @@
 {
   "train": {
-    "algorithm": "cem",
-    "run": "sim_cem_01",
+    "algorithm": "xentropy",
+    "run": "xentropy_test",
     "seed": 42,
-    "minutes": 60,
+    "minutes": 10,
     "max_iterations": null,
     "resume": null,
     "initialize_from": null,

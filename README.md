@@ -35,7 +35,7 @@ RL-Watercraft/
 │   │   │   ├── __main__.py   # camera loop, controller, display
 │   │   │   ├── vision.py     # ArUco marker geometry and pose
 │   │   │   └── motors.py     # serial send and stop
-│   │   ├── algorithms/cem.py # the training loop
+│   │   ├── algorithms/xentropy.py # the training loop
 │   │   ├── sim_env.py        # applies train.json to the Gazebo environment
 │   │   ├── policy.py         # network, loading, export
 │   │   ├── contract.py       # observation and action conventions
@@ -88,7 +88,7 @@ The hydrodynamics plugins in `ros_ws/src/` (`wave_gazebo_plugins`,
 ## Train, evaluate and view results
 
 1. Edit `configs/train.json`. The `train` section sets the algorithm, a new run
-   name, the seed and the time budget; `algorithm` holds the CEM settings; `task`
+   name, the seed and the time budget; `algorithm` holds the cross-entropy settings; `task`
    the goal and reward; `sim` the environment options; `policy` the network size
    and observation scales.
 2. Run `python -m watercraft.train`. Set `GAZEBO_GUI=false` to run headless.
