@@ -12,7 +12,7 @@ from watercraft.logging import CsvLog, TensorBoardLog, EPISODE_FIELDS, ITERATION
 from watercraft.sim_env import stop
 
 _CONFIG = load('algorithm')
-REF_SPEED_MPS = _CONFIG['reference_speed_mps']
+REF_SPEED_MPS = _CONFIG.get('reference_speed_mps', 2.0)  # absent while train.json holds another algorithm
 Episode = namedtuple('Episode', 'reward steps start_dist final_dist min_dist reached goal')
 EpisodeStep = namedtuple('EpisodeStep', 'observation action')
 

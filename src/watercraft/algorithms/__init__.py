@@ -1,7 +1,7 @@
 """Training algorithms; train.algorithm in configs/train.json selects one by name."""
 import importlib
 
-AVAILABLE = ('xentropy',)
+AVAILABLE = ('xentropy', 'ppo',)
 
 
 def get(name):

@@ -40,7 +40,11 @@ class FakePool:
 class RefactorTests(unittest.TestCase):
     def settings(self):
         c = resolve('train')
-        c['algorithm'].update(batch_size=2, train_steps_per_iteration=1, stop_success=2)
+        # train.json holds whichever algorithm was run last, so these tests carry their own settings.
+        c['train']['algorithm'] = 'xentropy'
+        c['algorithm'] = dict(batch_size=2, percentile=70, learning_rate=0.01, noise_start=0.5, noise_end=0.1,
+                              noise_decay_iterations=30, elite_memory=50, train_steps_per_iteration=1,
+                              reference_speed_mps=2.0, stop_success=2, stop_iterations=3)
         c['train'].update(max_iterations=1, auto_plot=False)
         return c
 
@@ -112,6 +116,39 @@ class RefactorTests(unittest.TestCase):
             b=torch_load(dirs[1]/'checkpoints/final.pth')
             for key in a:
                 np.testing.assert_array_equal(a[key].numpy(),b[key].numpy())
+
+    def test_ppo_trains_resumes_and_exports_a_deployable_actor(self):
+        from watercraft.algorithms import ppo
+        from watercraft.contract import NumpyPolicy
+        from watercraft.config import validate
+        from watercraft.results import plot_run
+        c = self.settings()
+        c['train']['algorithm'] = 'ppo'
+        c['algorithm'] = dict(steps_per_iteration=8, learning_rate=0.0003, gamma=0.99, gae_lambda=0.95,
+                              clip_range=0.2, epochs=2, minibatch_size=4, value_coef=0.5, entropy_coef=0.0,
+                              max_grad_norm=0.5, initial_log_std=-0.5, reward_scale=0.1, stop_success=2,
+                              stop_iterations=3)
+        validate(c, 'train')
+        # A timeout bootstraps from the critic (7); a reached goal does not; episodes do not leak into each other.
+        advantages, returns = ppo.compute_gae(np.array([1, 1, 1, 5], dtype=np.float32), np.array([0, 0, 0, 2], dtype=np.float32),
+                                              np.array([0, 0, 7, 0], dtype=np.float32), np.array([0, 0, 1, 1], dtype=bool), 1.0, 1.0)
+        np.testing.assert_allclose(advantages, [10, 9, 8, 3])
+        np.testing.assert_allclose(returns, [10, 9, 8, 5])
+        env = FakePool()
+        with tempfile.TemporaryDirectory() as temp:
+            with patch('watercraft.logging.run_path', return_value=Path(temp) / 'ppo'):
+                directory = create_run(c)
+            self.assertEqual(ppo.train(c, env, directory)['iteration'], 1)
+            c['train']['max_iterations'] = 2
+            result = ppo.train(c, env, directory, torch_load(directory / 'checkpoints/latest.pt'))
+            self.assertEqual((result['iteration'], result['env_steps']), (2, 16))
+            observation = np.random.RandomState(3).uniform(-1, 1, 6).astype(np.float32)
+            for name in ('best', 'final'):
+                np.testing.assert_allclose(load(directory / f'checkpoints/{name}.pth', c['policy']).act(observation),
+                                           NumpyPolicy(directory / f'checkpoints/{name}.npz').act(observation), atol=1e-6)
+            plot_run(directory)
+            self.assertTrue((directory / 'graphs/training.png').is_file())
+            self.assertGreater(env.stopped, 0)
 
     def test_bad_config_and_paths_fail_before_devices(self):
         from watercraft.config import validate

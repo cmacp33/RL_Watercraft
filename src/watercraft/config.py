@@ -72,13 +72,27 @@ def validate(settings, operation):
     if settings['policy']['observation_size'] != 6 or settings['policy']['action_size'] != 2:
         raise ValueError('The preserved policy contract requires six observations and two actions')
     if operation == 'train':
-        for key in ('batch_size', 'learning_rate', 'noise_decay_iterations', 'elite_memory', 'train_steps_per_iteration', 'reference_speed_mps', 'stop_iterations'):
-            positive('algorithm', key)
-        for key in ('batch_size', 'elite_memory', 'train_steps_per_iteration', 'stop_iterations'):
-            integer('algorithm', key)
+        # The algorithm section holds only the settings of the algorithm selected in train.algorithm.
+        if settings['train']['algorithm'] == 'ppo':
+            for key in ('steps_per_iteration', 'learning_rate', 'clip_range', 'epochs', 'minibatch_size',
+                        'max_grad_norm', 'reward_scale', 'stop_iterations'):
+                positive('algorithm', key)
+            for key in ('steps_per_iteration', 'epochs', 'minibatch_size', 'stop_iterations'):
+                integer('algorithm', key)
+            for key in ('gamma', 'gae_lambda'):
+                if not 0 < settings['algorithm'][key] <= 1:
+                    raise ValueError(f'algorithm.{key} must be in (0, 1]')
+            for key in ('value_coef', 'entropy_coef'):
+                if settings['algorithm'][key] < 0:
+                    raise ValueError(f'algorithm.{key} must not be negative')
+        else:
+            for key in ('batch_size', 'learning_rate', 'noise_decay_iterations', 'elite_memory', 'train_steps_per_iteration', 'reference_speed_mps', 'stop_iterations'):
+                positive('algorithm', key)
+            for key in ('batch_size', 'elite_memory', 'train_steps_per_iteration', 'stop_iterations'):
+                integer('algorithm', key)
+            if not 0 <= settings['algorithm']['percentile'] <= 100:
+                raise ValueError('algorithm.percentile must be in [0, 100]')
         positive('train', 'minutes')
-        if not 0 <= settings['algorithm']['percentile'] <= 100:
-            raise ValueError('algorithm.percentile must be in [0, 100]')
         limit = settings['train']['max_iterations']
         if limit is not None and (not isinstance(limit, int) or isinstance(limit, bool) or limit < 1):
             raise ValueError('max_iterations must be null or a positive integer')
