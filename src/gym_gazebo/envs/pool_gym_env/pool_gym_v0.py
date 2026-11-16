@@ -62,8 +62,9 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 
 		# reward weights
 		self.distance_weight = 2.0 # per metre closer to goal
+		self.spin_weight = 0.5 # per spin rate. it should not spin.
 		self.heading_weight = 0.5 # per radian turned toward goal
-		self.step_penalty = 0.02 # per step
+		self.step_penalty = 0.1 # per step
 		self.goal_bonus = 30.0 # paid once, on the step the goal is reached
 
 		# timeout counter
@@ -199,9 +200,10 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		# positive when closing distance / turning toward goal, negative when moving away / turning away
 		distance_reward = self.distance_weight * (previous_dist - current_dist)
 		heading_reward = self.heading_weight * (heading_error_prev - heading_error_curr)
+		spin_penalty = self.spin_weight * abs(state[5]) # yaw_rate
 
 		# small cost every step so standing still is never 0.0
-		reward = distance_reward + heading_reward - self.step_penalty
+		reward = distance_reward + heading_reward - self.step_penalty - spin_penalty
 
 		# one-time terminal bonus: reaching the goal ends the episode (done_check), so no more reward farming by hovering
 		if current_dist <= GOAL_RADIUS_M:

@@ -22,6 +22,8 @@ def make(settings, seed):
         pool.position_scale_m = settings['policy']['position_scale_m']
         for key in ('max_episode_steps', 'distance_weight', 'heading_weight', 'step_penalty', 'goal_bonus'):
             setattr(pool, key, settings['task'][key])
+        # Runs saved before the turning penalty existed have no spin_weight; evaluate them without it.
+        pool.spin_weight = settings['task'].get('spin_weight', 0.0)
         pool.goal = np.asarray(settings['task']['goal'], dtype=np.float32)
         pool._seed(seed)
         time.sleep(settings['sim']['startup_wait_s'])

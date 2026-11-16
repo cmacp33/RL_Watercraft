@@ -1,13 +1,13 @@
 {
   "evaluate": {
-    "run": "xentropy_test",
+    "run": "ppo_spin_penalty",
     "checkpoint": "best.npz",
     "episodes": 20,
     "seed": 0,
     "noise": 0.0,
-    "goal": null,
+    "goal": [-11,12],
     "random_goals": false,
-    "randomize": false,
+    "randomize": true,
     "auto_plot": true
   },
   "results": {
