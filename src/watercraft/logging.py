@@ -112,6 +112,14 @@ class TensorBoardLog:
         'score_bound': 'score/elite_bound',
         'memory_success': 'score/memory_success_rate',
         'noise_std': 'train/noise_std',
+        # SAC
+        'actor_loss': 'train/actor_loss',
+        'alpha': 'train/alpha',
+        'q_mean': 'train/q_mean',
+        'env_steps': 'train/env_steps',
+        'eval_success_rate': 'eval/success_rate',
+        'eval_final_dist_m': 'eval/final_dist_m',
+        'eval_steps': 'eval/episode_steps',
     }
 
     def __init__(self, run_dir):

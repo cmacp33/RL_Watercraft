@@ -1,7 +1,7 @@
 {
   "train": {
     "algorithm": "ppo",
-    "run": "ppo_enph479",
+    "run": "ppo_enph479_1116",
     "seed": 42,
     "minutes": 360,
     "max_iterations": null,

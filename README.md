@@ -35,7 +35,7 @@ RL-Watercraft/
 │   │   │   ├── __main__.py   # camera loop, controller, display
 │   │   │   ├── vision.py     # ArUco marker geometry and pose
 │   │   │   └── motors.py     # serial send and stop
-│   │   ├── algorithms/            # xentropy.py, ppo.py: one training loop each
+│   │   ├── algorithms/            # xentropy.py, ppo.py, sac.py: one training loop each
 │   │   ├── sim_env.py        # applies train.json to the Gazebo environment
 │   │   ├── policy.py         # network, loading, export
 │   │   ├── contract.py       # observation and action conventions
@@ -110,6 +110,8 @@ new run from existing `.pth`, `.pt` or `.npz` weights.
 To add an algorithm, put its `train(settings, env, directory, resume)` function in
 `src/watercraft/algorithms/<name>.py`, add the name to `AVAILABLE` in
 `src/watercraft/algorithms/__init__.py`, and select it with `train.algorithm`.
+The default `algorithm` settings for SAC are listed at the top of
+`src/watercraft/algorithms/sac.py`.
 
 ### Output
 

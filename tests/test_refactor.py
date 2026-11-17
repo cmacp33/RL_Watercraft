@@ -150,6 +150,46 @@ class RefactorTests(unittest.TestCase):
             self.assertTrue((directory / 'graphs/training.png').is_file())
             self.assertGreater(env.stopped, 0)
 
+    def test_sac_trains_resumes_and_exports_a_deployable_actor(self):
+        from watercraft.algorithms import sac
+        from watercraft.contract import NumpyPolicy
+        from watercraft.config import validate
+        c = self.settings()
+        c['train']['algorithm'] = 'sac'
+        c['algorithm'] = dict(learning_rate=0.0003, gamma=0.99, tau=0.005, batch_size=4, buffer_size=100,
+                              start_steps=2, updates_per_step=1, critic_hidden=16, initial_alpha=0.2,
+                              target_entropy=None, reward_scale=0.1, episodes_per_iteration=2, eval_every=1,
+                              eval_episodes=1, eval_seed=1, stop_success=2, stop_iterations=3)
+        validate(c, 'train')
+        # The tanh-corrected log-prob matches torch's TransformedDistribution.
+        actor = sac.Actor(c['policy'])
+        torch.manual_seed(0)
+        observations = torch.randn(5, 6)
+        action, log_prob, _ = actor.sample(observations)
+        mean, log_std = actor(observations)
+        reference = torch.distributions.TransformedDistribution(
+            torch.distributions.Normal(mean, log_std.exp()), [torch.distributions.TanhTransform()])
+        np.testing.assert_allclose(log_prob.detach().numpy(),
+                                   reference.log_prob(action.clamp(-0.999999, 0.999999)).sum(-1).detach().numpy(),
+                                   rtol=1e-3, atol=1e-3)
+        env = FakePool()
+        with tempfile.TemporaryDirectory() as temp:
+            with patch('watercraft.logging.run_path', return_value=Path(temp) / 'sac'):
+                directory = create_run(c)
+            self.assertEqual(sac.train(c, env, directory)['iteration'], 1)
+            c['train']['max_iterations'] = 2
+            result = sac.train(c, env, directory, torch_load(directory / 'checkpoints/latest.pt'))
+            self.assertEqual((result['iteration'], result['env_steps']), (2, 8))
+            self.assertEqual(torch_load(directory / 'checkpoints/latest.pt')['buffer']['count'], 8)
+            observation = np.random.RandomState(3).uniform(-1, 1, 6).astype(np.float32)
+            for name in ('best', 'final'):
+                np.testing.assert_allclose(load(directory / f'checkpoints/{name}.pth', c['policy']).act(observation),
+                                           NumpyPolicy(directory / f'checkpoints/{name}.npz').act(observation), atol=1e-6)
+            from watercraft.results import plot_run
+            plot_run(directory)
+            self.assertTrue((directory / 'graphs/training.png').is_file())
+            self.assertGreater(env.stopped, 0)
+
     def test_bad_config_and_paths_fail_before_devices(self):
         from watercraft.config import validate
         c=self.settings();c['algorithm']['batch_size']=0

@@ -44,6 +44,9 @@ TURN_CMD_MIN = _SETTINGS['turn_command_min']
 TURN_CMD_MAX = _SETTINGS['turn_command_max']
 TURN_KP = _SETTINGS['turn_kp']
 MAX_ACTION = _SETTINGS['max_action']
+# Angle from the boat marker's +X axis to the bow, counterclockwise seen from above (the camera).
+# 0: bow along marker +X.  90: bow along marker +Y.  -90: bow along marker -Y.
+HEADING_OFFSET_RAD = math.radians(_SETTINGS.get('heading_offset_deg', 0.0))
 
 CAM_INDEX = _SETTINGS['camera_index']
 CORNER_IDS = list(_SETTINGS["corner_ids"])
@@ -53,6 +56,28 @@ N_CALIB_FRAMES = _SETTINGS['calibration_frames']
 AXIS_LENGTH_M = _SETTINGS['axis_length_m']
 PRINT_FULL_TRANSFORMS = _SETTINGS['print_full_transforms']
 CALIB_FILE = str(config_path(_SETTINGS["calibration_file"]))
+
+# One row per control tick, to compare the real boat with the sim step logs.
+REAL_LOG_FIELDS = ['time_s', 'dt_s', 'mode', 'x_m', 'y_m', 'yaw_deg', 'dist_m', 'heading_error_deg',
+                   'obs_goal_forward', 'obs_goal_left', 'obs_sin_heading', 'obs_cos_heading',
+                   'obs_forward_speed', 'obs_yaw_rate', 'model_left', 'model_right',
+                   'sent_left', 'sent_right', 'esp_left', 'esp_right']
+
+
+def open_real_log():
+    """runs/<run>/evaluations/real/<timestamp>.csv (+ .json with the deploy settings)."""
+    from watercraft.logging import CsvLog, evaluation_files
+    weights = Path(POLICY_WEIGHTS)
+    run = weights.parent.parent if weights.parent.name == 'checkpoints' else weights.parent
+    if CONTROLLER != 'policy' or not run.is_dir():
+        run = config_path('runs') / 'p_controller'
+    csv_path, json_path = evaluation_files(run, 'real')
+    json_path.write_text(json.dumps(dict(_SETTINGS, position_scale_m=POSITION_SCALE_M,
+                                         forward_speed_scale_mps=contract.FORWARD_SPEED_SCALE_MPS,
+                                         yaw_rate_scale_radps=contract.YAW_RATE_SCALE_RADPS,
+                                         dry_run=DRY_RUN), indent=2))
+    print('Real-boat log:', csv_path)
+    return CsvLog(csv_path, REAL_LOG_FIELDS)
 
 
 def use_trained_policy_settings(weights):
@@ -117,6 +142,9 @@ class MotorController:
         self.last_control = float('-inf')
         self.channels = (0, 0)
         self.mode = 'calibration -> stop'
+        self.log = None
+        self.start = None
+        self.bow_heading_deg = None
 
     def reset(self, ser):
         self.previous_pose = None
@@ -134,14 +162,19 @@ class MotorController:
             self.previous_pose = None
         if now - self.last_control < CONTROL_PERIOD_S:
             return
+        dt = now - self.last_control
         self.last_control = now
+        row = {}
         if not valid:
             action = np.zeros(2)
             self.mode = ('calibration -> stop' if not calibrated
                          else 'marker/heading unavailable -> stop')
         else:
             x, y = pose['position_origin_m'][:2]
-            yaw = pose['heading_angle_rad']
+            # bow heading = marker +X heading + mounting offset, wrapped to [-pi, pi]
+            yaw = pose['heading_angle_rad'] + HEADING_OFFSET_RAD
+            yaw = math.atan2(math.sin(yaw), math.cos(yaw))
+            self.bow_heading_deg = math.degrees(yaw)
             vx = vy = yaw_rate = 0.0
             if self.previous_pose is not None:
                 px, py, pyaw, previous_time = self.previous_pose
@@ -162,8 +195,18 @@ class MotorController:
             else:
                 action = np.array([left, right]) / max(FORWARD_CMD, TURN_CMD_MAX)
                 self.mode = 'p:' + debug['mode']
+            row = dict(x_m=float(x), y_m=float(y), yaw_deg=math.degrees(yaw), dist_m=debug['distance_m'],
+                       heading_error_deg=debug['heading_error_deg'],
+                       model_left=float(action[0]), model_right=float(action[1]),
+                       **dict(zip(REAL_LOG_FIELDS[8:14], map(float, observation))))
             action = np.clip(action, -MAX_ACTION, MAX_ACTION)
         self.channels = send_policy_action(ser, action)
+        if self.log is not None:
+            if self.start is None:
+                self.start = now
+            self.log.write(time_s=now - self.start, dt_s=dt if np.isfinite(dt) else '', mode=self.mode,
+                           sent_left=float(action[0]), sent_right=float(action[1]),
+                           esp_left=self.channels[0], esp_right=self.channels[1], **row)
 
 
 def main():
@@ -177,6 +220,7 @@ def main():
     params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
     detector = cv2.aruco.ArucoDetector(dictionary, params)
     controller = MotorController()
+    controller.log = open_real_log()
     ser, capture = None, None
     samples, geometry, preview = [], None, None
     try:
@@ -251,7 +295,9 @@ def main():
                     cv2.putText(vis, 'ID4 not detected or pose unavailable', (10, 60),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
             controller.update(ser, id4_pose, geometry is not None, time.monotonic())
-            cv2.putText(vis, f'{controller.mode} | ESP L={controller.channels[0]} R={controller.channels[1]}',
+            bow = ('bow --' if controller.bow_heading_deg is None
+                   else f'bow {controller.bow_heading_deg:+.0f} deg')
+            cv2.putText(vis, f'{controller.mode} | {bow} | ESP L={controller.channels[0]} R={controller.channels[1]}',
                         (10, 345), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
             cv2.putText(vis, f'Target: {TARGET_XY_M} m', (10, 370),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
@@ -269,6 +315,7 @@ def main():
         try:
             stop_motors(ser)
         finally:
+            controller.log.close()
             if capture is not None:
                 capture.release()
             cv2.destroyAllWindows()
