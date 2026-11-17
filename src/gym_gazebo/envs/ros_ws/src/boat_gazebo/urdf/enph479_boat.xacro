@@ -1,0 +1,170 @@
+<?xml version="1.0"?>
+<!--
+  ENPH479 catamaran, built from the SolidWorks export in ~/Documents/ENPH479_boat_Assem.
+
+  Frames: the export has +Y forward, +Z up and its origin off to one side. The USV plugins
+  need +X forward, so base_link is the export rotated -90 deg about Z, with its origin on the
+  centreline at the keel (the buoyancy plugin measures submersion from the link origin).
+  Left is +Y, right is -Y.
+
+  Mass: 0.6 kg total (0.59 hull + 2 x 0.005 shaft/propeller).
+  Thrust: 0.03 N per thruster, forward and reverse, along each 25-deg-down propeller shaft.
+
+  Hydrodynamic coefficients are estimates from the hull geometry (see comments on each);
+  replace them with values fitted to the real boat's measured top speed and turn rate.
+-->
+<robot name="boat" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <link name="base_link">
+    <inertial>
+      <!-- export CoM (0.04373, -0.10662, 0.083011), moved into this frame -->
+      <origin xyz="0.0021 0 0.0504" rpy="0 0 0"/>
+      <mass value="0.59"/>
+      <!-- export inertia (16:25 re-export, 0.34555 kg) scaled to 0.59 kg and rotated into this frame -->
+      <inertia ixx="0.0020315" ixy="0" ixz="-0.0000139" iyy="0.0020055" iyz="0" izz="0.0037649"/>
+    </inertial>
+
+    <visual name="hull_visual">
+      <origin xyz="0.10872 0.04373 -0.03260" rpy="0 0 -1.5707963"/>
+      <geometry>
+        <mesh filename="model://enph479_boat/meshes/base_link.STL" scale="1 1 1"/>
+      </geometry>
+      <material name="hull_grey">
+        <color rgba="0.79 0.82 0.93 1"/>
+      </material>
+    </visual>
+
+    <!-- simple boxes for contact with the pool walls (cheaper and steadier than the mesh) -->
+    <collision name="left_pontoon">
+      <origin xyz="0 0.0825 0.03" rpy="0 0 0"/>
+      <geometry><box size="0.203 0.045 0.06"/></geometry>
+    </collision>
+    <collision name="right_pontoon">
+      <origin xyz="0 -0.0825 0.03" rpy="0 0 0"/>
+      <geometry><box size="0.203 0.045 0.06"/></geometry>
+    </collision>
+    <collision name="deck">
+      <origin xyz="0 0 0.07" rpy="0 0 0"/>
+      <geometry><box size="0.13 0.12 0.04"/></geometry>
+    </collision>
+  </link>
+
+  <!-- Thruster links: origin at the propeller, X along the shaft pointing forward and 25 deg up,
+       which is the direction the propeller pushes the boat. The thrust plugin applies its force
+       along this X axis at the link's centre of mass, i.e. at the propeller. -->
+  <xacro:macro name="thruster" params="side y">
+    <link name="${side}_propeller_link">
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0.005"/>
+        <!-- floored so ODE stays stable; the real shaft is lighter -->
+        <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1.1e-5" iyz="0" izz="1.1e-5"/>
+      </inertial>
+      <visual name="shaft_visual">
+        <origin xyz="0 0 0" rpy="0 -1.5707963 0"/>
+        <geometry>
+          <mesh filename="model://enph479_boat/meshes/${side}_link.STL" scale="1 1 1"/>
+        </geometry>
+        <material name="shaft_grey"><color rgba="0.79 0.82 0.93 1"/></material>
+      </visual>
+      <visual name="propeller_visual">
+        <origin xyz="0 0 0" rpy="0 1.5707963 0"/>
+        <geometry><cylinder radius="0.012" length="0.004"/></geometry>
+        <material name="propeller_dark"><color rgba="0.2 0.2 0.2 1"/></material>
+      </visual>
+    </link>
+
+    <!-- The thrust plugin drives this joint with a fixed 2 N*m to animate the propeller.
+         That is far more torque than this boat can take, so the effort limit caps it at
+         1e-4 N*m (Gazebo truncates joint forces to the effort limit). -->
+    <joint name="${side}_engine_propeller_joint" type="continuous">
+      <parent link="base_link"/>
+      <child link="${side}_propeller_link"/>
+      <origin xyz="-0.08882 ${y} -0.02278" rpy="0 -0.4363323 0"/>
+      <axis xyz="1 0 0"/>
+      <limit effort="0.0001" velocity="300"/>
+      <dynamics damping="0.000001" friction="0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:thruster side="Left" y="0.048"/>
+  <xacro:thruster side="Right" y="-0.048"/>
+
+  <!-- ArUco marker for the overhead camera, on top of the deck; 0.020 m ahead of the origin
+       (the old boat's 0.5 m scaled by 0.0405). Keep in sync with sim.marker_offset_x_m -->
+  <link name="aruco_marker">
+    <visual name="visual">
+      <origin xyz="0 0 0" rpy="0 1.57079632 3.14159265"/>
+      <geometry>
+        <mesh filename="model://marker0/meshes/Marker0.dae" scale="0.04 0.04 0.04"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="aruco_marker_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="aruco_marker"/>
+    <origin xyz="0.020 0 0.095" rpy="0 0 0"/>
+  </joint>
+
+  <gazebo>
+    <plugin name="usv_dynamics_boat" filename="libusv_gazebo_dynamics_plugin.so">
+      <bodyName>base_link</bodyName>
+      <waterLevel>0</waterLevel>
+      <waterDensity>997.8</waterDensity>
+      <!-- added mass off. The plugin applies it from a finite-difference acceleration, which is
+           only stable when it is much smaller than the boat's own mass/inertia. zDotW, kDotP and
+           mDotQ default to 0.1 when omitted (harmless for the 227 kg boat), which is 26-50x this
+           boat's roll/pitch inertia and blows the simulation up to NaN within a few steps. -->
+      <xDotU>0.0</xDotU>
+      <yDotV>0.0</yDotV>
+      <zDotW>0.0</zDotW>
+      <kDotP>0.0</kDotP>
+      <mDotQ>0.0</mDotQ>
+      <nDotR>0.0</nDotR>
+      <!-- surge: 0.5*rho*Cd*A with two pontoon fronts (0.045 x 0.028 m), Cd ~1;
+           with 2 x 0.027 N forward thrust this gives ~0.2 m/s top speed -->
+      <xU>0.05</xU>
+      <xUU>0.95</xUU>
+      <!-- sway: pontoon sides (0.203 x 0.028 m), Cd ~1.2 -->
+      <yV>0.2</yV>
+      <yVV>6.6</yVV>
+      <!-- heave/roll/pitch: about half of critical damping for the hull's buoyancy stiffness -->
+      <zW>10.0</zW>
+      <kP>0.07</kP>
+      <mQ>0.035</mQ>
+      <!-- yaw: sideways drag of the pontoons while turning; ~1 rad/s at full differential thrust -->
+      <nR>0.0005</nR>
+      <nRR>0.0024</nRR>
+      <!-- buoyancy: two cylinders whose half-section (pi*r^2/2) matches a pontoon's
+           cross-section; floats 0.6 kg at ~2.8 cm draft, max lift 8.1 N -->
+      <hullRadius>0.036</hullRadius>
+      <boatWidth>0.166</boatWidth>
+      <boatLength>0.203</boatLength>
+      <length_n>2</length_n>
+      <wave_model>ocean_waves</wave_model>
+    </plugin>
+    <plugin name="boat_thrust_plugin" filename="libusv_gazebo_thrust_plugin.so">
+      <robotNamespace>/boat</robotNamespace>
+      <thruster>
+        <linkName>Left_propeller_link</linkName>
+        <propJointName>Left_engine_propeller_joint</propJointName>
+        <engineJointName>Left_engine_propeller_joint</engineJointName>
+        <cmdTopic>/boat/thrusters/left_thrust_cmd</cmdTopic>
+        <angleTopic>boat/thrusters/left_thrust_angle</angleTopic>
+        <enableAngle>false</enableAngle>
+        <maxForceFwd>0.03</maxForceFwd>
+        <maxForceRev>-0.03</maxForceRev>
+      </thruster>
+      <thruster>
+        <linkName>Right_propeller_link</linkName>
+        <propJointName>Right_engine_propeller_joint</propJointName>
+        <engineJointName>Right_engine_propeller_joint</engineJointName>
+        <cmdTopic>/boat/thrusters/right_thrust_cmd</cmdTopic>
+        <angleTopic>boat/thrusters/right_thrust_angle</angleTopic>
+        <enableAngle>false</enableAngle>
+        <maxForceFwd>0.03</maxForceFwd>
+        <maxForceRev>-0.03</maxForceRev>
+      </thruster>
+    </plugin>
+  </gazebo>
+</robot>

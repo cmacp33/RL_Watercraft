@@ -1,0 +1,86 @@
+{
+  "train": {
+    "algorithm": "ppo",
+    "run": "ppo_enph479",
+    "seed": 42,
+    "minutes": 360,
+    "max_iterations": null,
+    "resume": null,
+    "initialize_from": null,
+    "auto_plot": true
+  },
+  "algorithm": {
+    "steps_per_iteration": 4096,
+    "learning_rate": 0.0003,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "epochs": 10,
+    "minibatch_size": 64,
+    "value_coef": 0.5,
+    "entropy_coef": 0.0,
+    "max_grad_norm": 0.5,
+    "initial_log_std": -0.5,
+    "reward_scale": 0.1,
+    "stop_success": 2,
+    "stop_iterations": 3
+  },
+  "task": {
+    "goal": [
+      0.45,
+      0.15
+    ],
+    "goal_radius_m": 0.08,
+    "max_episode_steps": 300,
+    "distance_weight": 50.0,
+    "heading_weight": 0.5,
+    "spin_weight": 0.3,
+    "step_penalty": 0.1,
+    "goal_bonus": 30.0
+  },
+  "sim": {
+    "environment_id": "GazeboPool-v0",
+    "startup_wait_s": 2.0,
+    "control_period_s": 0.1,
+    "marker_offset_x_m": 0.02,
+    "random_goals": true,
+    "goal_distance_range_m": [
+      0.122,
+      0.486
+    ],
+    "goal_bounds_m": [
+      0.53,
+      0.18
+    ],
+    "domain_randomization": true,
+    "dr_ranges": {
+      "motor_gain": [
+        0.7,
+        1.15
+      ],
+      "deadband": [
+        0.0,
+        0.1
+      ],
+      "delay_steps": [
+        0,
+        1
+      ],
+      "pos_noise_m": 0.03,
+      "heading_noise_rad": 0.05235987755982989,
+      "speed_noise_mps": 0.05,
+      "yaw_rate_noise_radps": 0.1
+    },
+    "diagnostic_seconds": 25.0,
+    "reset_tolerance": 0.1
+  },
+  "policy": {
+    "observation_size": 6,
+    "hidden_size": 128,
+    "action_size": 2,
+    "position_scale_m": 0.81,
+    "forward_speed_scale_mps": 0.3,
+    "yaw_rate_scale_radps": 1.0,
+    "export_numpy": true
+  }
+}
