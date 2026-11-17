@@ -161,16 +161,129 @@ def plot_run(directory):
     render_training([str(directory)], Path(directory) / 'graphs/training.png', settings['x'], settings['smooth'])
 
 
+def _max_steps(filename):
+    """Episode step limit, from the evaluation's metadata file (falls back to the longest episode)."""
+    metadata = Path(filename).with_suffix('.json')
+    if metadata.exists():
+        value = json.loads(metadata.read_text()).get('task', {}).get('max_episode_steps')
+        if isinstance(value, int) and value > 0:
+            return value
+    return None
+
+
+def distance_curves(filename, max_steps=None):
+    """Distance to goal per step for every episode, as a (episodes, max_steps + 1) array.
+
+    Episodes that finish early (goal reached) keep their last distance until max_steps, so every
+    step's median is taken over all episodes. Returns None when there is no per-step log, or when
+    the goal differs between episodes (random goals: raw distances are not comparable).
+    """
+    from watercraft.evaluate import steps_path
+    episodes = read_csv(filename)
+    steps = read_csv(steps_path(filename))
+    if not episodes or not steps:
+        return None
+    goals = {(r['goal_x_m'], r['goal_y_m']) for r in episodes}
+    if len(goals) > 1:
+        print('Distance curve skipped: goals differ between episodes (use a fixed goal)')
+        return None
+    by_episode = {}
+    for row in steps:
+        by_episode.setdefault(int(row['episode']), []).append((int(row['step']), float(row['dist_m'])))
+    longest = max(step for values in by_episode.values() for step, _ in values)
+    max_steps = max(max_steps or _max_steps(filename) or 0, longest)
+    curves = np.empty((len(by_episode), max_steps + 1))
+    for i, episode in enumerate(sorted(by_episode)):
+        values = sorted(by_episode[episode])
+        distances = np.array([d for _, d in values])
+        curves[i, :len(distances)] = distances
+        curves[i, len(distances):] = distances[-1]  # hold the last distance
+    return curves
+
+
+def distance_summary(filename, max_steps=None):
+    """Single numbers for comparing evaluations with the same fixed goal."""
+    curves = distance_curves(filename, max_steps)
+    if curves is None:
+        return None
+    median = np.median(curves, axis=0)
+    rows = read_csv(filename)
+    reached = [int(r['steps']) for r in rows if r['reached'] == '1']
+    return {
+        'episodes': int(curves.shape[0]),
+        'max_steps': int(curves.shape[1] - 1),
+        'start_dist_m': round(float(median[0]), 4),
+        'mean_median_dist_m': round(float(median.mean()), 4),  # area under the median curve / steps; lower is better
+        'median_final_dist_m': round(float(median[-1]), 4),
+        'success_rate': round(len(reached) / len(rows), 3),
+        'median_steps_to_goal': float(np.median(reached)) if reached else None,
+        # mean |change in model output| per step, averaged over both thrusters; 0 = constant, 2 = full flip every step
+        'median_action_smoothness': (round(float(np.median([float(r['action_smoothness']) for r in rows])), 4)
+                                     if rows and 'action_smoothness' in rows[0] else None),
+    }
+
+
+def plot_distance(filename, max_steps=None):
+    """<timestamp>_distance.png: median distance to goal vs step, with the 25-75% band."""
+    curves = distance_curves(filename, max_steps)
+    if curves is None:
+        return
+    steps = np.arange(curves.shape[1])
+    median = np.median(curves, axis=0)
+    low, high = np.percentile(curves, [25, 75], axis=0)
+    figure, axis = plt.subplots(figsize=(9, 5))
+    for curve in curves:
+        axis.plot(steps, curve, color='grey', alpha=0.2, linewidth=0.8)
+    axis.fill_between(steps, low, high, color='C0', alpha=0.25, label='25-75% of episodes')
+    axis.plot(steps, median, color='C0', linewidth=2.2, label=f'median ({curves.shape[0]} episodes)')
+    metadata = Path(filename).with_suffix('.json')
+    radius = json.loads(metadata.read_text()).get('task', {}).get('goal_radius_m') if metadata.exists() else None
+    if radius:
+        axis.axhline(radius, color='C2', linestyle='--', linewidth=1.2, label=f'goal radius {radius} m')
+    axis.set(xlabel='Step', ylabel='Distance to goal (m)', xlim=(0, steps[-1]), ylim=(0, None),
+             title='Distance to goal per step (finished episodes hold their last distance)')
+    axis.grid(alpha=0.3)
+    axis.legend()
+    figure.tight_layout()
+    figure.savefig(Path(filename).with_name(Path(filename).stem + '_distance.png'), dpi=120)
+    plt.close(figure)
+
+
+def plot_episode_steps(axis, rows, max_steps=None):
+    """Steps taken in each episode: green reached the goal, red timed out; dashed line = step limit."""
+    episodes = [int(r['episode']) for r in rows]
+    steps = [int(r['steps']) for r in rows]
+    colors = ['tab:green' if int(r['reached']) else 'tab:red' for r in rows]
+    from matplotlib.patches import Patch
+    axis.bar(episodes, steps, color=colors)
+    handles = [Patch(color='tab:green', label='reached'), Patch(color='tab:red', label='timed out'),
+               axis.axhline(np.mean(steps), color='black', linewidth=1, label=f'mean {np.mean(steps):.0f}')]
+    if max_steps:
+        handles.append(axis.axhline(max_steps, color='gray', linestyle='--', linewidth=1, label=f'limit {max_steps}'))
+    # headroom above the tallest bar / limit line so the legend never covers them
+    axis.set(xlabel='Episode', ylabel='Steps in episode', ylim=(0, 1.3 * max(steps + [max_steps or 0])))
+    axis.legend(handles=handles, loc='upper right', fontsize='small', ncol=2)
+
+
 def plot_evaluation(filename):
+    if str(filename).endswith('_steps.csv'):
+        return
     rows = read_csv(filename)
     if not rows:
         return
-    figure, axes = plt.subplots(1, 2, figsize=(10, 4))
+    plot_distance(filename)
+    smooth = 'action_smoothness' in rows[0]
+    panels = 4 if smooth else 3
+    figure, axes = plt.subplots(1, panels, figsize=(5 * panels, 4))
     episodes = [int(r['episode']) for r in rows]
     axes[0].plot(episodes, [float(r['final_dist_m']) for r in rows], marker='o')
     axes[0].set(xlabel='Episode', ylabel='Final distance (m)')
     axes[1].bar(episodes, [int(r['reached']) for r in rows])
     axes[1].set(xlabel='Episode', ylabel='Reached goal', ylim=(0, 1.1))
+    plot_episode_steps(axes[2], rows, _max_steps(filename))
+    if smooth:
+        axes[3].bar(episodes, [float(r['action_smoothness']) for r in rows])
+        axes[3].set(xlabel='Episode', ylabel='Mean |action change| per step (lower = smoother)', ylim=(0, None))
     figure.tight_layout()
     output = Path(filename).with_suffix('.png')
     figure.savefig(output)

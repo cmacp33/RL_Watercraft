@@ -9,10 +9,23 @@ from watercraft.sim_env import make, close, stop
 from watercraft.policy import load as load_policy
 
 EVAL_FIELDS = ['episode', 'total_reward', 'steps', 'start_dist_m', 'final_dist_m',
-               'min_dist_m', 'reached', 'goal_x_m', 'goal_y_m', 'end_reason']
+               'min_dist_m', 'reached', 'goal_x_m', 'goal_y_m', 'end_reason', 'action_smoothness']
+# One row per control step (step 0 = right after reset, no action yet).
+#   model_*: the policy's output, in [-1, 1].
+#   motor_*: the command published to the thruster plugin (-1..1 = -0.03..0.03 N), i.e. the model output
+#            after evaluation noise and, with randomize on, the simulated motor delay, gain and deadband.
+#   action_change: (|change in model_left| + |change in model_right|) / 2 since the previous step.
+STEP_FIELDS = ['episode', 'step', 'dist_m', 'model_left', 'model_right', 'motor_left', 'motor_right',
+               'action_change']
 
 
-def evaluate(settings, env, actor, log):
+def steps_path(csv_path):
+    """<timestamp>.csv -> <timestamp>_steps.csv, next to the per-episode file."""
+    csv_path = Path(csv_path)
+    return csv_path.with_name(csv_path.stem + '_steps.csv')
+
+
+def evaluate(settings, env, actor, log, step_log=None):
     options = settings['evaluate']
     pool = env.unwrapped
     rows = []
@@ -20,24 +33,40 @@ def evaluate(settings, env, actor, log):
         observation = env.reset()
         start = minimum = pool.goal_distance_m()
         total, steps, done = 0.0, 0, False
+        if step_log is not None:
+            step_log.write(episode=episode, step=0, dist_m=float(start))
+        previous, changes = None, []
         try:
             while not done:
-                action = actor.act(observation)
+                output = np.asarray(actor.act(observation), dtype=np.float64)
+                action = output
                 if options['noise']:
-                    action = np.clip(action + np.random.normal(0, options['noise'], size=2), -1, 1)
+                    action = np.clip(output + np.random.normal(0, options['noise'], size=2), -1, 1)
                 observation, reward, done, info = env.step(action)
                 total += reward
                 steps += 1
                 minimum = min(minimum, info['goal_dist_m'])
+                change = '' if previous is None else float(np.abs(output - previous).mean())
+                if change != '':
+                    changes.append(change)
+                previous = output
+                if step_log is not None:
+                    motor = np.asarray(info.get('applied_action', action), dtype=np.float64)
+                    step_log.write(episode=episode, step=steps, dist_m=float(info['goal_dist_m']),
+                                   model_left=float(output[0]), model_right=float(output[1]),
+                                   motor_left=float(motor[0]), motor_right=float(motor[1]),
+                                   action_change=change)
             final = pool.goal_distance_m()
             reached = final <= getattr(pool, 'goal_radius_m', settings['task']['goal_radius_m'])
             row = dict(episode=episode, total_reward=total, steps=steps, start_dist_m=start,
                 final_dist_m=final, min_dist_m=minimum, reached=int(reached),
                 goal_x_m=float(pool.goal[0]), goal_y_m=float(pool.goal[1]),
-                end_reason='goal' if reached else 'timeout')
+                end_reason='goal' if reached else 'timeout',
+                action_smoothness=float(np.mean(changes)) if changes else 0.0)
             rows.append(row)
             log.write(**row)
-            print(f'Episode {episode}: distance={final:.3f}m, reached={reached}, steps={steps}')
+            print(f'Episode {episode}: distance={final:.3f}m, reached={reached}, steps={steps}, '
+                  f'action change/step={row["action_smoothness"]:.3f}')
         finally:
             stop(env)
     return rows
@@ -78,6 +107,9 @@ def main():
     settings['sim']['domain_randomization'] = options['randomize']
     if options['goal'] is not None:
         settings['task']['goal'] = options['goal']
+    # null keeps the step limit the run was trained with.
+    if options.get('max_episode_steps') is not None:
+        settings['task']['max_episode_steps'] = options['max_episode_steps']
     actor = load_policy(checkpoint, settings['policy'])
     csv_path, json_path = evaluation_files(directory, 'sim')
     metadata = dict(settings, checkpoint=str(checkpoint.relative_to(directory)), checkpoint_sha256=checkpoint_hash(checkpoint), status='started')
@@ -85,20 +117,28 @@ def main():
     env = None
     np.random.seed(options['seed'])
     log = CsvLog(csv_path, EVAL_FIELDS)
+    step_log = CsvLog(steps_path(csv_path), STEP_FIELDS)
     try:
         env = make(settings, options['seed'])
-        evaluate(settings, env, actor, log)
+        evaluate(settings, env, actor, log, step_log)
         metadata['status'] = 'complete'
     except BaseException as error:
         metadata.update(status='failed', error=f'{type(error).__name__}: {error}')
         raise
     finally:
         log.close()
+        step_log.close()
         try:
             if env is not None:
                 close(env)
         finally:
             json_path.write_text(json.dumps(metadata, indent=2))
+    from watercraft.results import distance_summary
+    summary = distance_summary(csv_path, settings['task']['max_episode_steps'])
+    if summary:
+        metadata['distance_curve'] = summary
+        json_path.write_text(json.dumps(metadata, indent=2))
+        print('Distance curve:', ', '.join(f'{k}={v}' for k, v in summary.items()))
     if options['auto_plot']:
         from watercraft.results import plot_evaluation
         plot_evaluation(csv_path)

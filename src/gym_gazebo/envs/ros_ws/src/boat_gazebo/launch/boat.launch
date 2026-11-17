@@ -5,8 +5,9 @@
 
   <arg name="x" default="0.0"/>
   <arg name="y" default="0.0"/>
-  <arg name="z" default="0.1"/>
-  <arg name="model" default="$(find boat_gazebo)/urdf/boat.xacro"/>
+  <!-- keel at the 0.6 kg boat's floating draft, so episodes start level and still -->
+  <arg name="z" default="-0.028"/>
+  <arg name="model" default="$(find boat_gazebo)/urdf/enph479_boat.xacro"/>
   <arg name ="camera" default="$(find boat_gazebo)/urdf/camera.xacro"/>
   <arg name="world_file" default="$(find boat_gazebo)/worlds/boat.world"/>
   <!-- GAZEBO_GUI=false runs headless and skips the overhead camera (faster training) -->
@@ -28,7 +29,7 @@
   <group if="$(arg gui)">
     <param name="camera_description" command="$(find xacro)/xacro $(arg camera)"/>
     <node name="spawn_camera" pkg="gazebo_ros" type="spawn_model"
-        args="-param camera_description -urdf -model floating_camera -x 0 -y 0 -z 30 -R 0 -P 1.5708 -Y 0"
+        args="-param camera_description -urdf -model floating_camera -x 0 -y 0 -z 1.215 -R 0 -P 1.5708 -Y 0"
         respawn="false" output="screen"/>
   </group>
 

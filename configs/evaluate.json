@@ -1,13 +1,14 @@
 {
   "evaluate": {
-    "run": "ppo_spin_penalty",
+    "run": "ppo_test",
     "checkpoint": "best.npz",
     "episodes": 20,
     "seed": 0,
     "noise": 0.0,
-    "goal": [-11,12],
+    "goal": [0.45,-0.15],
     "random_goals": false,
     "randomize": true,
+    "max_episode_steps": 100,
     "auto_plot": true
   },
   "results": {

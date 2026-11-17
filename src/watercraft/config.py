@@ -105,3 +105,6 @@ def validate(settings, operation):
             raise ValueError('evaluate.noise must be finite and nonnegative')
         if settings['evaluate']['goal'] is not None and settings['evaluate']['random_goals']:
             raise ValueError('Choose a fixed goal or random goals, not both')
+        limit = settings['evaluate'].get('max_episode_steps')
+        if limit is not None and (not isinstance(limit, int) or isinstance(limit, bool) or limit < 1):
+            raise ValueError('evaluate.max_episode_steps must be null or a positive integer')

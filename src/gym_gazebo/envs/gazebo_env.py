@@ -55,8 +55,28 @@ class GazeboEnv(gym.Env):
 
         self.gzclient_pid = 0
 
+        # rospy decides ONCE, inside init_node, whether rospy.sleep()/get_time() follow simulated
+        # time or the wall clock, by reading the /use_sim_time parameter. roslaunch sets that
+        # parameter a moment after it starts, so calling init_node straight away sometimes read it
+        # too early and silently used the wall clock: a 0.1 s control step then lasted 0.1 s of
+        # real time, i.e. up to ~1 s of physics when the sim runs 10x faster than real time.
+        # Wait until the parameter is there before initialising the node.
+        deadline = time.time() + 60.0
+        while True:
+            try:
+                if rospy.get_param('/use_sim_time', False):
+                    break
+            except Exception:
+                pass # master not up yet
+            if time.time() > deadline:
+                raise RuntimeError("/use_sim_time was not set within 60 s of launching " + fullpath)
+            time.sleep(0.2)
+
         # Launch the simulation with the given launchfile name
         rospy.init_node('gym', anonymous=True)
+        if rospy.rostime.is_wallclock():
+            raise RuntimeError("rospy is using the wall clock instead of simulated time; "
+                               "control steps would not last control_period_s of physics")
 
         ################################################################################################################
         # r = rospy.Rate(1)
