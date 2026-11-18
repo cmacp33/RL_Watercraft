@@ -248,10 +248,12 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		# compute reward
 		step_reward = self.compute_reward(self.state, self.prev_state)
 
+		# count this step before the done check, so an episode times out after exactly
+		# max_episode_steps steps (it used to run one extra step)
+		self.count += 1
+
 		# check if done
 		done = self.done_check(self.state, self.prev_state)
-
-		self.count += 1
 		# Two different ways an episode ends. Reaching the goal is a real end: nothing more can be
 		# earned. Running out of steps is not: the boat could have carried on. Value-based methods
 		# (SAC/PPO) must only treat the first as terminal, so the timeout is flagged here under

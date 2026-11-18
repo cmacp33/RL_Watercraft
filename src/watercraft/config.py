@@ -85,6 +85,19 @@ def validate(settings, operation):
             for key in ('value_coef', 'entropy_coef'):
                 if settings['algorithm'][key] < 0:
                     raise ValueError(f'algorithm.{key} must not be negative')
+        elif settings['train']['algorithm'] == 'sac':
+            for key in ('learning_rate', 'tau', 'batch_size', 'buffer_size', 'updates_per_step', 'critic_hidden',
+                        'initial_alpha', 'reward_scale', 'episodes_per_iteration', 'eval_every', 'eval_episodes',
+                        'stop_iterations'):
+                positive('algorithm', key)
+            for key in ('batch_size', 'buffer_size', 'updates_per_step', 'critic_hidden', 'episodes_per_iteration',
+                        'eval_every', 'eval_episodes', 'stop_iterations'):
+                integer('algorithm', key)
+            start = settings['algorithm']['start_steps']
+            if not isinstance(start, int) or isinstance(start, bool) or start < 0:
+                raise ValueError('algorithm.start_steps must be a nonnegative integer')
+            if not 0 < settings['algorithm']['gamma'] <= 1 or not 0 < settings['algorithm']['tau'] <= 1:
+                raise ValueError('algorithm.gamma and algorithm.tau must be in (0, 1]')
         else:
             for key in ('batch_size', 'learning_rate', 'noise_decay_iterations', 'elite_memory', 'train_steps_per_iteration', 'reference_speed_mps', 'stop_iterations'):
                 positive('algorithm', key)

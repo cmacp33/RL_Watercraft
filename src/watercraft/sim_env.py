@@ -34,12 +34,21 @@ def make(settings, seed):
 
 
 def stop(env):
+    """Zero the thrusters and pause physics.
+
+    Never raises: after Ctrl-C (SIGINT) rospy has already shut down, so these calls fail, and an
+    exception here would skip the rest of the cleanup (final checkpoint, summary.json). If Gazebo
+    really died mid-training, the next env.step() still fails loudly.
+    """
     pool = env.unwrapped
-    if hasattr(pool, 'left_pub'):
-        pool.left_pub.publish(0.0)
-        pool.right_pub.publish(0.0)
-    if hasattr(pool, 'pause'):
-        pool.pause()
+    try:
+        if hasattr(pool, 'left_pub'):
+            pool.left_pub.publish(0.0)
+            pool.right_pub.publish(0.0)
+        if hasattr(pool, 'pause'):
+            pool.pause()
+    except Exception as error:
+        print(f'Warning: could not stop the simulator ({type(error).__name__}: {error})')
 
 
 def close(env):

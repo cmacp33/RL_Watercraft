@@ -1,6 +1,6 @@
 {
   "evaluate": {
-    "run": "ppo_test",
+    "run": "ppo_enph479_1116",
     "checkpoint": "best.npz",
     "episodes": 20,
     "seed": 0,
