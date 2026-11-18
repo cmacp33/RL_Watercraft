@@ -119,7 +119,7 @@ class TensorBoardLog:
         'env_steps': 'train/env_steps',
         'eval_success_rate': 'eval/success_rate',
         'eval_final_dist_m': 'eval/final_dist_m',
-        'eval_steps': 'eval/episode_steps',
+        'eval_median_steps_to_goal': 'eval/median_steps_to_goal',
     }
 
     def __init__(self, run_dir):

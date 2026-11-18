@@ -14,6 +14,7 @@ The algorithm section of configs/train.json for SAC (train.algorithm = "sac"):
     start_steps 2000, updates_per_step 1, critic_hidden 256, initial_alpha 0.2,
     target_entropy null (= -action_size), reward_scale 0.1, episodes_per_iteration 8,
     eval_every 5, eval_episodes 10, eval_seed 12345, stop_success 0.9, stop_iterations 3
+    ("solved" needs the evaluation and that iteration's training success both >= stop_success)
 """
 import copy
 import json
@@ -32,7 +33,8 @@ from watercraft.sim_env import stop
 
 ITERATION_FIELDS = ['iter', 'elapsed_s', 'env_steps', 'loss', 'actor_loss', 'alpha', 'q_mean', 'noise_std',
                     'reward_mean', 'success_rate', 'mean_final_dist_m', 'mean_min_dist_m', 'mean_steps',
-                    'buffer_size', 'eval_success_rate', 'eval_final_dist_m', 'eval_steps']
+                    'buffer_size', 'eval_success_rate', 'eval_final_dist_m', 'eval_median_steps_to_goal']
+# eval_* are filled only on iterations that ran an evaluation (every eval_every), blank otherwise.
 LOG_STD_RANGE = (-5.0, 2.0)
 
 
@@ -188,7 +190,12 @@ class SAC:
 
 # ---------------------------------------------------------------- 2. evaluation
 def evaluate(env, agent, episodes, seed, goal_radius_m):
-    """Noise-free episodes on the same goals/conditions every call; not added to the buffer."""
+    """Noise-free episodes on the same goals/conditions every call; not added to the buffer.
+
+    Returns (success rate, mean final distance, median steps over the episodes that reached the goal).
+    Steps count only reached episodes, like median_steps_to_goal in watercraft.evaluate, so a timeout
+    (max_episode_steps) does not inflate them; it is nan when no episode reached the goal.
+    """
     pool = env.unwrapped
     training_rng = getattr(pool, 'np_random', None)
     pool.np_random = np.random.RandomState(seed)
@@ -204,8 +211,13 @@ def evaluate(env, agent, episodes, seed, goal_radius_m):
     finally:
         pool.np_random = training_rng
         stop(env)
-    success, distance, steps = (float(np.mean(column)) for column in zip(*results))
-    return success, distance, steps
+    reached = [steps for ok, _, steps in results if ok]
+    return (float(np.mean([r[0] for r in results])), float(np.mean([r[1] for r in results])),
+            float(np.median(reached)) if reached else float('nan'))
+
+
+def reached_any(median_steps):
+    return not math.isnan(median_steps)
 
 
 # ---------------------------------------------------------------- 3. outer loop
@@ -305,23 +317,28 @@ def train(settings, env, directory, resume=None):
                                                    goal_radius_m))
                 success, distance, eval_steps = state['last_eval']
                 # Best = noise-free task performance: success, then closeness, then speed.
-                score = (success, -round(distance, 3), -eval_steps)
+                score = (success, -round(distance, 3), -eval_steps if reached_any(eval_steps) else -math.inf)
                 if state['best_score'] is None or tuple(score) > tuple(state['best_score']):
                     state['best_score'] = score
                     save_actor(checkpoint_dir / 'best.pth', copy.deepcopy(agent.actor.mean_net.state_dict()),
                                settings)
-                state['success_streak'] = state['success_streak'] + 1 if success >= config['stop_success'] else 0
             state['stats'] = stats
             state['elapsed_s'] = previous_elapsed + time.monotonic() - started
             success_rate = float(np.mean([e['reached'] for e in episodes]))
+            if evaluated:
+                # Solved needs the noise-free evaluation AND this iteration's training episodes to pass:
+                # a few evaluation episodes alone once hid a collapse (Nora's run, iterations 6-9).
+                passed = min(success, success_rate) >= config['stop_success']
+                state['success_streak'] = state['success_streak'] + 1 if passed else 0
             final_distance = float(np.mean([e['final_dist'] for e in episodes]))
             row = dict(stats, iter=iteration, elapsed_s=state['elapsed_s'], env_steps=state['env_steps'],
                        reward_mean=float(np.mean([e['reward'] for e in episodes])), success_rate=success_rate,
                        mean_final_dist_m=final_distance,
                        mean_min_dist_m=float(np.mean([e['min_dist'] for e in episodes])),
-                       mean_steps=float(np.mean([e['steps'] for e in episodes])), buffer_size=buffer.count,
-                       eval_success_rate=state['last_eval'][0], eval_final_dist_m=state['last_eval'][1],
-                       eval_steps=state['last_eval'][2])
+                       mean_steps=float(np.mean([e['steps'] for e in episodes])), buffer_size=buffer.count)
+            if evaluated:
+                row.update(eval_success_rate=state['last_eval'][0], eval_final_dist_m=state['last_eval'][1],
+                           eval_median_steps_to_goal=state['last_eval'][2])
             iteration_log.write(**row)
             tb.write(iteration, row)
             print(f"Iteration {iteration}: success={success_rate:.0%}, distance={final_distance:.3f}m, "
@@ -329,7 +346,7 @@ def train(settings, env, directory, resume=None):
                   + ('  (random actions)' if state['env_steps'] <= config['start_steps'] else ''))
             if evaluated:
                 print(f"   eval: success={state['last_eval'][0]:.0%}, distance={state['last_eval'][1]:.3f}m, "
-                      f"steps={state['last_eval'][2]:.0f}")
+                      f"median steps to goal={state['last_eval'][2]:.0f}")
             state['iteration'] += 1
             if state['success_streak'] >= config['stop_iterations']:
                 state['stop_reason'] = 'solved'
