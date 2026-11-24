@@ -32,7 +32,9 @@ class FakePool:
     def step(self, action):
         self.steps += 1
         self.distance = max(0.0, 1.0 - self.steps / 2)
-        return np.zeros(6, dtype=np.float32), 1., self.steps >= 2, {'goal_dist_m': self.distance, 'sim_dt': .1}
+        done = self.steps >= 2
+        return np.zeros(6, dtype=np.float32), 1., done, {'goal_dist_m': self.distance, 'sim_dt': .1,
+                                                         'reached': self.distance <= self.goal_radius_m}
     def pause(self):  # what watercraft.sim_env.stop calls on the Gazebo environment
         self.stopped += 1
 

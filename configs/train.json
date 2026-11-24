@@ -1,7 +1,7 @@
 {
   "train": {
-    "algorithm": "sac",
-    "run": "sac_enph479_1117",
+    "algorithm": "ppo",
+    "run": "ppo_hold_1119",
     "seed": 42,
     "minutes": 360,
     "max_iterations": null,
@@ -10,21 +10,18 @@
     "auto_plot": true
   },
   "algorithm": {
+    "steps_per_iteration": 4096,
     "learning_rate": 0.0003,
     "gamma": 0.99,
-    "tau": 0.005,
-    "batch_size": 256,
-    "buffer_size": 300000,
-    "start_steps": 2000,
-    "updates_per_step": 1,
-    "critic_hidden": 256,
-    "initial_alpha": 0.2,
-    "target_entropy": null,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "epochs": 10,
+    "minibatch_size": 64,
+    "value_coef": 0.5,
+    "entropy_coef": 0.0,
+    "max_grad_norm": 0.5,
+    "initial_log_std": -0.5,
     "reward_scale": 0.1,
-    "episodes_per_iteration": 32,
-    "eval_every": 5,
-    "eval_episodes": 20,
-    "eval_seed": 12345,
     "stop_success": 2,
     "stop_iterations": 3
   },
@@ -34,6 +31,7 @@
       0.15
     ],
     "goal_radius_m": 0.08,
+    "goal_hold_steps": 20,
     "max_episode_steps": 300,
     "distance_weight": 50.0,
     "heading_weight": 0.5,
@@ -82,8 +80,8 @@
     "hidden_size": 128,
     "action_size": 2,
     "position_scale_m": 0.81,
-    "forward_speed_scale_mps": 0.3,
-    "yaw_rate_scale_radps": 1.0,
+    "forward_speed_scale_mps": 0.45,
+    "yaw_rate_scale_radps": 2.0,
     "export_numpy": true
   }
 }

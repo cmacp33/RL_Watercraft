@@ -65,6 +65,10 @@ def validate(settings, operation):
             raise ValueError(f'{group}.{key} must be an integer')
     integer('policy', 'hidden_size')
     integer('task', 'max_episode_steps')
+    if 'goal_hold_steps' in settings['task']:
+        integer('task', 'goal_hold_steps')
+        if settings['task']['goal_hold_steps'] >= settings['task']['max_episode_steps']:
+            raise ValueError('task.goal_hold_steps must be smaller than task.max_episode_steps')
     for group in ('task',):
         goal = settings[group]['goal']
         if not isinstance(goal, list) or len(goal) != 2 or not all(isinstance(v, (int, float)) and math.isfinite(v) for v in goal):
@@ -121,3 +125,6 @@ def validate(settings, operation):
         limit = settings['evaluate'].get('max_episode_steps')
         if limit is not None and (not isinstance(limit, int) or isinstance(limit, bool) or limit < 1):
             raise ValueError('evaluate.max_episode_steps must be null or a positive integer')
+        hold = settings['evaluate'].get('goal_hold_steps')
+        if hold is not None and (not isinstance(hold, int) or isinstance(hold, bool) or hold < 1):
+            raise ValueError('evaluate.goal_hold_steps must be null or a positive integer')

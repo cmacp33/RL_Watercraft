@@ -9,6 +9,7 @@
     "random_goals": false,
     "randomize": true,
     "max_episode_steps": 100,
+    "goal_hold_steps": null,
     "auto_plot": true
   },
   "results": {

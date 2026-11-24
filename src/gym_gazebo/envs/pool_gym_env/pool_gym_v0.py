@@ -68,7 +68,15 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		self.spin_weight = 0.5 # per spin rate. it should not spin.
 		self.heading_weight = 0.5 # per radian turned toward goal
 		self.step_penalty = 0.1 # per step
-		self.goal_bonus = 30.0 # paid once, on the step the goal is reached
+		self.goal_bonus = 30.0 # total paid for reaching the goal and holding it (see compute_reward)
+
+		# The goal counts as reached only after the boat has stayed inside the goal radius for this
+		# many steps in a row (x control_period_s = seconds). 1 = end the episode on first touch,
+		# which taught the policy to arrive at full speed: fine in sim, but the real boat then
+		# overshoots and cannot settle. Leaving the radius restarts the count.
+		self.goal_hold_steps = 1
+		self.hold_count = 0 # steps in a row inside the goal radius, up to now
+		self.best_hold = 0 # longest hold so far this episode (the bonus is paid on new records only)
 
 		# timeout counter
 		self.count = 0
@@ -192,10 +200,17 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		)
 
 
+	def update_hold(self, state):
+		"""Count the steps in a row spent inside the goal radius; call once per step, before the reward."""
+		goal_distance_m = self.position_scale_m * math.hypot(state[0], state[1])
+		self.hold_count = self.hold_count + 1 if goal_distance_m <= GOAL_RADIUS_M else 0
+
+	def goal_held(self):
+		return self.hold_count >= self.goal_hold_steps
+
 	def done_check(self, state, prev_state):
 
-		goal_distance_m = self.position_scale_m * math.hypot(state[0], state[1])
-		return goal_distance_m <= GOAL_RADIUS_M or self.count >= self.max_episode_steps
+		return self.goal_held() or self.count >= self.max_episode_steps
 		
 	def compute_reward(self, state, prev_state):
 
@@ -215,9 +230,14 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		# small cost every step so standing still is never 0.0
 		reward = distance_reward + heading_reward - self.step_penalty - spin_penalty
 
-		# one-time terminal bonus: reaching the goal ends the episode (done_check), so no more reward farming by hovering
-		if current_dist <= GOAL_RADIUS_M:
-			reward += self.goal_bonus
+		# Goal bonus, paid in goal_hold_steps equal parts: one part each time the hold gets longer
+		# than it has ever been this episode. Staying put collects the whole bonus and ends the
+		# episode; leaving and coming back earns nothing until the old record is beaten, so the
+		# total never exceeds goal_bonus (no reward farming by hovering in and out).
+		# With goal_hold_steps = 1 this is the old one-time bonus on first touch.
+		if self.hold_count > self.best_hold:
+			self.best_hold = self.hold_count
+			reward += self.goal_bonus / self.goal_hold_steps
 		return reward
 
 	def _seed(self, seed=None):
@@ -245,7 +265,8 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		self.state = self.get_state(wait_fresh=False)
 		sim_dt = rospy.get_time() - step_start # > control_period_s if pausing lags behind fast physics
 
-		# compute reward
+		# compute reward (the hold count comes first: the goal bonus depends on it)
+		self.update_hold(self.state)
 		step_reward = self.compute_reward(self.state, self.prev_state)
 
 		# count this step before the done check, so an episode times out after exactly
@@ -254,13 +275,16 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 
 		# check if done
 		done = self.done_check(self.state, self.prev_state)
-		# Two different ways an episode ends. Reaching the goal is a real end: nothing more can be
-		# earned. Running out of steps is not: the boat could have carried on. Value-based methods
-		# (SAC/PPO) must only treat the first as terminal, so the timeout is flagged here under
-		# the key gym's TimeLimit wrapper uses.
-		reached = self.goal_distance_m() <= GOAL_RADIUS_M
+		# Two different ways an episode ends. Reaching the goal (and holding it for goal_hold_steps)
+		# is a real end: nothing more can be earned. Running out of steps is not: the boat could
+		# have carried on. Value-based methods (SAC/PPO) must only treat the first as terminal, so
+		# the timeout is flagged here under the key gym's TimeLimit wrapper uses. An episode that
+		# times out while the boat is inside the radius, but before the hold is complete, is a
+		# timeout, not a reached goal.
+		reached = self.goal_held()
 		info = {'sim_dt': sim_dt, 'goal_dist_m': self.goal_distance_m(), 'applied_action': action,
-				'reached': reached, 'TimeLimit.truncated': done and not reached}
+				'reached': reached, 'in_goal': self.hold_count > 0, 'hold_steps': self.hold_count,
+				'TimeLimit.truncated': done and not reached}
 
       	# return state reward and done flag
 		return self.observe(self.state), step_reward, done, info
@@ -313,6 +337,8 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		self.prev_state = self.state
 
 		self.count = 0
+		self.hold_count = 0
+		self.best_hold = 0
 		if self.domain_randomization:
 			self.sample_randomization()
 

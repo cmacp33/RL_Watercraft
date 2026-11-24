@@ -8,7 +8,8 @@
   Left is +Y, right is -Y.
 
   Mass: 0.6 kg total (0.59 hull + 2 x 0.005 shaft/propeller).
-  Thrust: 0.03 N per thruster, forward and reverse, along each 25-deg-down propeller shaft.
+  Thrust: 0.075 N per thruster (0.15 N for the whole boat, measured on the real boat), forward and
+  reverse, along each 25-deg-down propeller shaft. Reverse has not been measured; it is assumed equal.
 
   Hydrodynamic coefficients are estimates from the hull geometry (see comments on each);
   replace them with values fitted to the real boat's measured top speed and turn rate.
@@ -122,7 +123,9 @@
       <mDotQ>0.0</mDotQ>
       <nDotR>0.0</nDotR>
       <!-- surge: 0.5*rho*Cd*A with two pontoon fronts (0.045 x 0.028 m), Cd ~1;
-           with 2 x 0.027 N forward thrust this gives ~0.2 m/s top speed -->
+           with 2 x 0.068 N forward thrust (0.075 N along the 25-deg shaft) this gives ~0.35 m/s top
+           speed. The drag was estimated for the old 0.03 N thrust (~0.2 m/s); refit it to the real
+           boat's measured top speed -->
       <xU>0.05</xU>
       <xUU>0.95</xUU>
       <!-- sway: pontoon sides (0.203 x 0.028 m), Cd ~1.2 -->
@@ -132,7 +135,8 @@
       <zW>10.0</zW>
       <kP>0.07</kP>
       <mQ>0.035</mQ>
-      <!-- yaw: sideways drag of the pontoons while turning; ~1 rad/s at full differential thrust -->
+      <!-- yaw: sideways drag of the pontoons while turning; ~1.5 rad/s at full differential thrust
+           (was ~1 rad/s at the old 0.03 N thrust; refit to the real boat's measured turn rate) -->
       <nR>0.0005</nR>
       <nRR>0.0024</nRR>
       <!-- buoyancy: two cylinders whose half-section (pi*r^2/2) matches a pontoon's
@@ -152,8 +156,8 @@
         <cmdTopic>/boat/thrusters/left_thrust_cmd</cmdTopic>
         <angleTopic>boat/thrusters/left_thrust_angle</angleTopic>
         <enableAngle>false</enableAngle>
-        <maxForceFwd>0.03</maxForceFwd>
-        <maxForceRev>-0.03</maxForceRev>
+        <maxForceFwd>0.075</maxForceFwd>
+        <maxForceRev>-0.075</maxForceRev>
       </thruster>
       <thruster>
         <linkName>Right_propeller_link</linkName>
@@ -162,8 +166,8 @@
         <cmdTopic>/boat/thrusters/right_thrust_cmd</cmdTopic>
         <angleTopic>boat/thrusters/right_thrust_angle</angleTopic>
         <enableAngle>false</enableAngle>
-        <maxForceFwd>0.03</maxForceFwd>
-        <maxForceRev>-0.03</maxForceRev>
+        <maxForceFwd>0.075</maxForceFwd>
+        <maxForceRev>-0.075</maxForceRev>
       </thruster>
     </plugin>
   </gazebo>

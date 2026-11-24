@@ -57,7 +57,8 @@ def collect_episode(env, net, noise_std):
             observation = next_observation
         radius = getattr(pool, 'goal_radius_m', load('task')['goal_radius_m'])
         final = pool.goal_distance_m()
-        return Episode(total, steps, start, final, minimum, final <= radius, list(map(float, pool.goal))), durations
+        reached = bool(info['reached']) if steps else final <= radius
+        return Episode(total, steps, start, final, minimum, reached, list(map(float, pool.goal))), durations
     finally:
         stop(env)
 

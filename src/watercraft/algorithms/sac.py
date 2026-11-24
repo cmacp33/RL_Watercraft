@@ -206,7 +206,7 @@ def evaluate(env, agent, episodes, seed, goal_radius_m):
             while not done:
                 observation, _, done, info = env.step(agent.act(observation, deterministic=True))
                 steps += 1
-            results.append((info['goal_dist_m'] <= goal_radius_m, info['goal_dist_m'], steps))
+            results.append((info['reached'], info['goal_dist_m'], steps))
             stop(env)
     finally:
         pool.np_random = training_rng
@@ -286,7 +286,7 @@ def train(settings, env, directory, resume=None):
                     else:
                         action = agent.act(observation)
                     next_observation, reward, done, info = env.step(action)
-                    reached = done and info['goal_dist_m'] <= goal_radius_m
+                    reached = done and info['reached']  # inside the radius for task.goal_hold_steps in a row
                     # A timeout only stops the clock, so it keeps the future term (not terminal).
                     buffer.add(observation, action, reward, next_observation, reached)
                     observation = next_observation

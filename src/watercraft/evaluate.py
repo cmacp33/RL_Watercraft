@@ -12,7 +12,7 @@ EVAL_FIELDS = ['episode', 'total_reward', 'steps', 'start_dist_m', 'final_dist_m
                'min_dist_m', 'reached', 'goal_x_m', 'goal_y_m', 'end_reason', 'action_smoothness']
 # One row per control step (step 0 = right after reset, no action yet).
 #   model_*: the policy's output, in [-1, 1].
-#   motor_*: the command published to the thruster plugin (-1..1 = -0.03..0.03 N), i.e. the model output
+#   motor_*: the command published to the thruster plugin (-1..1 = full reverse..full forward thrust), i.e. the model output
 #            after evaluation noise and, with randomize on, the simulated motor delay, gain and deadband.
 #   action_change: (|change in model_left| + |change in model_right|) / 2 since the previous step.
 STEP_FIELDS = ['episode', 'step', 'dist_m', 'model_left', 'model_right', 'motor_left', 'motor_right',
@@ -57,7 +57,8 @@ def evaluate(settings, env, actor, log, step_log=None):
                                    motor_left=float(motor[0]), motor_right=float(motor[1]),
                                    action_change=change)
             final = pool.goal_distance_m()
-            reached = final <= getattr(pool, 'goal_radius_m', settings['task']['goal_radius_m'])
+            # reached = inside the goal radius for task.goal_hold_steps steps in a row (1 = first touch)
+            reached = bool(info['reached'])
             row = dict(episode=episode, total_reward=total, steps=steps, start_dist_m=start,
                 final_dist_m=final, min_dist_m=minimum, reached=int(reached),
                 goal_x_m=float(pool.goal[0]), goal_y_m=float(pool.goal[1]),
@@ -110,6 +111,9 @@ def main():
     # null keeps the step limit the run was trained with.
     if options.get('max_episode_steps') is not None:
         settings['task']['max_episode_steps'] = options['max_episode_steps']
+    # null keeps the hold the run was trained with (1 = first touch, for runs saved before it existed).
+    if options.get('goal_hold_steps') is not None:
+        settings['task']['goal_hold_steps'] = options['goal_hold_steps']
     actor = load_policy(checkpoint, settings['policy'])
     csv_path, json_path = evaluation_files(directory, 'sim')
     metadata = dict(settings, checkpoint=str(checkpoint.relative_to(directory)), checkpoint_sha256=checkpoint_hash(checkpoint), status='started')

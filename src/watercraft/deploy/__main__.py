@@ -61,7 +61,7 @@ CALIB_FILE = str(config_path(_SETTINGS["calibration_file"]))
 REAL_LOG_FIELDS = ['time_s', 'dt_s', 'mode', 'x_m', 'y_m', 'yaw_deg', 'dist_m', 'heading_error_deg',
                    'obs_goal_forward', 'obs_goal_left', 'obs_sin_heading', 'obs_cos_heading',
                    'obs_forward_speed', 'obs_yaw_rate', 'model_left', 'model_right',
-                   'sent_left', 'sent_right', 'esp_left', 'esp_right']
+                   'sent_left', 'sent_right', 'esp_left', 'esp_right', 'hold_steps']
 
 
 def open_real_log():
@@ -145,9 +145,11 @@ class MotorController:
         self.log = None
         self.start = None
         self.bow_heading_deg = None
+        self.hold_count = 0
 
     def reset(self, ser):
         self.previous_pose = None
+        self.hold_count = 0
         self.last_control = float('-inf')
         self.channels = send_policy_action(ser, np.zeros(2))
         self.mode = 'recalibration -> stop'
@@ -160,6 +162,7 @@ class MotorController:
                  np.isfinite(pose['heading_angle_rad']))
         if not valid:
             self.previous_pose = None
+            self.hold_count = 0
         if now - self.last_control < CONTROL_PERIOD_S:
             return
         dt = now - self.last_control
@@ -188,14 +191,20 @@ class MotorController:
                 position_scale_m=POSITION_SCALE_M)
             left, right, debug = compute_motor_command_to_target(
                 x, y, math.degrees(yaw), TARGET_XY_M)
-            if debug['distance_m'] <= STOP_DISTANCE_M:
+            # Steps in a row inside the goal radius, as the sim counts them for task.goal_hold_steps.
+            self.hold_count = self.hold_count + 1 if debug['distance_m'] <= STOP_DISTANCE_M else 0
+            if self.policy is not None:
+                # The policy keeps control inside the radius: hold runs (task.goal_hold_steps > 1)
+                # were trained to brake and stay there, which cutting the motors would prevent.
+                action = self.policy.act(observation)
+                self.mode = f'policy | holding {self.hold_count}' if self.hold_count else 'policy'
+            elif debug['distance_m'] <= STOP_DISTANCE_M:
                 action, self.mode = np.zeros(2), 'at goal -> stop'
-            elif self.policy is not None:
-                action, self.mode = self.policy.act(observation), 'policy'
             else:
                 action = np.array([left, right]) / max(FORWARD_CMD, TURN_CMD_MAX)
                 self.mode = 'p:' + debug['mode']
             row = dict(x_m=float(x), y_m=float(y), yaw_deg=math.degrees(yaw), dist_m=debug['distance_m'],
+                       hold_steps=self.hold_count,
                        heading_error_deg=debug['heading_error_deg'],
                        model_left=float(action[0]), model_right=float(action[1]),
                        **dict(zip(REAL_LOG_FIELDS[8:14], map(float, observation))))

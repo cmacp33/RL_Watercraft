@@ -59,7 +59,7 @@ def collect_rollout(env, model, steps_wanted, goal_radius_m):
                     log_prob = distribution.log_prob(action).sum(-1)
                     value = model.value(tensor)
                 next_observation, reward, done, info = env.step(np.clip(action.numpy(), -1.0, 1.0))
-                reached = done and info['goal_dist_m'] <= goal_radius_m
+                reached = done and info['reached']  # inside the radius for task.goal_hold_steps in a row
                 with torch.no_grad():
                     # Nothing follows a reached goal; a timeout only stops the clock, so ask the critic.
                     next_value = 0.0 if reached else model.value(as_tensor(next_observation)).item()

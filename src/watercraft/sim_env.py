@@ -24,6 +24,8 @@ def make(settings, seed):
             setattr(pool, key, settings['task'][key])
         # Runs saved before the turning penalty existed have no spin_weight; evaluate them without it.
         pool.spin_weight = settings['task'].get('spin_weight', 0.0)
+        # Runs saved before the goal hold existed ended the episode on first touch of the goal.
+        pool.goal_hold_steps = settings['task'].get('goal_hold_steps', 1)
         pool.goal = np.asarray(settings['task']['goal'], dtype=np.float32)
         pool._seed(seed)
         time.sleep(settings['sim']['startup_wait_s'])
