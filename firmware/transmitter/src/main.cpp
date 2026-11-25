@@ -41,10 +41,10 @@ const int SPEED_STEP = 25;                 // change per hotkey press
 const unsigned long UI_REFRESH_MS = 200;   // dashboard redraw interval
 const unsigned long LINK_TIMEOUT_MS = 1500;
 
-// Failsafe: if no serial command arrives for this long, command both motors to 0.
-// The PC control loop sends every 100 ms, so a crashed/frozen script stops the boat.
-// Press F to toggle it off when driving by hand from the dashboard.
-const unsigned long SERIAL_TIMEOUT_MS = 100000;
+// Host commands arrive every 100 ms; stop after five missed control ticks.
+// The receiver also has a 1 s timeout if this transmitter stops rebroadcasting.
+// Press F to disable this watchdog only when intentionally driving by hand.
+const unsigned long SERIAL_TIMEOUT_MS = 500;
 static bool serialFailsafe = true;
 static unsigned long lastSerialCmd = 0;
 static unsigned long lastThrust = 0;

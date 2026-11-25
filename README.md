@@ -145,6 +145,11 @@ results.
    opening the serial port. Set it to `true` to drive the motors.
 3. Run `python -m watercraft.deploy`. Keep all four corner markers visible; `R`
    recalibrates, `Q` or `Esc` quits. Motors stop when the marker is lost and on exit.
+   Flash the transmitter firmware with its 500 ms serial watchdog before a powered
+   run. It stops forwarding a stale command when host updates stop; the receiver's
+   1 s timeout is a backup if the transmitter itself stops. The transmitter's `F`
+   key disables its watchdog for manual dashboard use; leave it enabled for policy
+   deployment. A watchdog stop commands neutral but cannot instantly stop boat drift.
 
 Camera tools read `vision_tracking/config.json` and the camera settings in
 `configs/deploy.json`:
