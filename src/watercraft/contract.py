@@ -16,6 +16,8 @@ GOAL_RADIUS_M = load("task")["goal_radius_m"]
 FORWARD_SPEED_SCALE_MPS = _POLICY["forward_speed_scale_mps"]
 YAW_RATE_SCALE_RADPS = _POLICY["yaw_rate_scale_radps"]
 ESP32_MAX_COMMAND = 255
+# policy.heading_mode values; runs saved before the setting existed are 'bearing'.
+HEADING_MODES = ('bearing', 'target')
 
 
 class MotorCalibration(NamedTuple):
@@ -50,6 +52,7 @@ def policy_observation(
     goal_x_m,
     goal_y_m,
     position_scale_m=POSITION_SCALE_M,
+    goal_heading_rad=None,
 ):
     """
     Takes in observation in world coordinates.
@@ -57,14 +60,21 @@ def policy_observation(
 
     Values are goal-forward, goal-left, heading-error sine/cosine,
     forward speed, and yaw rate. Heading and yaw rate are in radians.
+
+    The heading error depends on the run's policy.heading_mode:
+      'bearing' (goal_heading_rad=None): angle from the bow to the goal POSITION. Older runs.
+      'target'  (goal_heading_rad given): angle from the bow to the commanded goal HEADING.
+        The direction to the goal is still in goal-forward/goal-left, which, unlike the
+        bearing, shrink smoothly to zero at the goal instead of swinging with camera noise.
     """
     values = np.asarray(
         [x_m, y_m, yaw_rad, velocity_x_mps, velocity_y_mps,
-         yaw_rate_radps, goal_x_m, goal_y_m],
+         yaw_rate_radps, goal_x_m, goal_y_m,
+         0.0 if goal_heading_rad is None else goal_heading_rad],
         dtype=np.float64,
     )
     if not np.all(np.isfinite(values)):
-        raise ValueError("Pose, velocity, and goal values must be finite")
+        raise ValueError("Pose, velocity, goal and goal heading values must be finite")
     if position_scale_m <= 0:
         raise ValueError("position_scale_m must be positive")
 
@@ -74,7 +84,10 @@ def policy_observation(
     sin_yaw = math.sin(yaw_rad)
     goal_forward_m = cos_yaw * dx + sin_yaw * dy
     goal_left_m = -sin_yaw * dx + cos_yaw * dy
-    heading_error = math.atan2(dy, dx) - yaw_rad
+    if goal_heading_rad is None:
+        heading_error = math.atan2(dy, dx) - yaw_rad
+    else:
+        heading_error = goal_heading_rad - yaw_rad
     forward_speed_mps = cos_yaw * velocity_x_mps + sin_yaw * velocity_y_mps
 
     # with respect to boat's own axis

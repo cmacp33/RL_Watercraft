@@ -78,6 +78,17 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		self.hold_count = 0 # steps in a row inside the goal radius, up to now
 		self.best_hold = 0 # longest hold so far this episode (the bonus is paid on new records only)
 
+		# Goal heading (policy.heading_mode = 'target'): the boat must also face goal_heading, within
+		# goal_heading_tolerance_rad, for a step to count toward the hold, and observations 2-3 are the
+		# error to that heading instead of the bearing to the goal position. 'bearing' is the original task.
+		self.heading_mode = 'bearing'
+		self.goal_heading = 0.0 # rad, world frame (counterclockwise from +x)
+		self.random_goal_headings = False # new uniform random goal heading each episode
+		self.goal_heading_tolerance_rad = math.pi # pi = any heading counts
+		# The heading reward is weighted by exp(-distance / this): close to the goal, facing the goal
+		# heading pays; far away the distance reward does the steering.
+		self.heading_distance_scale_m = 0.1
+
 		# timeout counter
 		self.count = 0
 
@@ -197,13 +208,18 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 			float(self.goal[0]),
 			float(self.goal[1]),
 			position_scale_m=self.position_scale_m,
+			goal_heading_rad=float(self.goal_heading) if self.heading_mode == 'target' else None,
 		)
 
 
 	def update_hold(self, state):
-		"""Count the steps in a row spent inside the goal radius; call once per step, before the reward."""
+		"""Count the steps in a row spent inside the goal radius (and, in 'target' heading mode,
+		within the heading tolerance); call once per step, before the reward."""
 		goal_distance_m = self.position_scale_m * math.hypot(state[0], state[1])
-		self.hold_count = self.hold_count + 1 if goal_distance_m <= GOAL_RADIUS_M else 0
+		inside = goal_distance_m <= GOAL_RADIUS_M
+		if self.heading_mode == 'target':
+			inside = inside and abs(math.atan2(state[2], state[3])) <= self.goal_heading_tolerance_rad
+		self.hold_count = self.hold_count + 1 if inside else 0
 
 	def goal_held(self):
 		return self.hold_count >= self.goal_hold_steps
@@ -224,7 +240,16 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 
 		# positive when closing distance / turning toward goal, negative when moving away / turning away
 		distance_reward = self.distance_weight * (previous_dist - current_dist)
-		heading_reward = self.heading_weight * (heading_error_prev - heading_error_curr)
+		if self.heading_mode == 'target':
+			# Goal-heading error, weighted by closeness to the goal. Written as the change in a potential
+			# (-weight * closeness * error), so driving around cannot farm it: any loop back to the same
+			# state sums to zero, whatever the weights.
+			closeness_prev = math.exp(-previous_dist / self.heading_distance_scale_m)
+			closeness_curr = math.exp(-current_dist / self.heading_distance_scale_m)
+			heading_reward = self.heading_weight * (closeness_prev * heading_error_prev
+													- closeness_curr * heading_error_curr)
+		else:
+			heading_reward = self.heading_weight * (heading_error_prev - heading_error_curr)
 		spin_penalty = self.spin_weight * abs(state[5]) # yaw_rate
 
 		# small cost every step so standing still is never 0.0
@@ -284,6 +309,8 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		reached = self.goal_held()
 		info = {'sim_dt': sim_dt, 'goal_dist_m': self.goal_distance_m(), 'applied_action': action,
 				'reached': reached, 'in_goal': self.hold_count > 0, 'hold_steps': self.hold_count,
+				# true (noise-free) observation 2-3 angle: to the goal heading in 'target' mode, else to the goal
+				'heading_error_deg': math.degrees(math.atan2(self.state[2], self.state[3])),
 				'TimeLimit.truncated': done and not reached}
 
       	# return state reward and done flag
@@ -332,6 +359,8 @@ class GazeboPoolv0Env(gazebo_env.GazeboEnv):
 		# goal is read when building the observation, so pick it first
 		if self.random_goals:
 			self.goal = self.sample_goal()
+		if self.random_goal_headings:
+			self.goal_heading = self.np_random.uniform(-math.pi, math.pi)
 
 		self.state = self._observation_from(pose, twist)
 		self.prev_state = self.state

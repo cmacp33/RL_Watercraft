@@ -1,4 +1,5 @@
 """Configure the existing Gym environment from configs/train.json without rewriting it."""
+import math
 import time
 import numpy as np
 
@@ -27,6 +28,13 @@ def make(settings, seed):
         # Runs saved before the goal hold existed ended the episode on first touch of the goal.
         pool.goal_hold_steps = settings['task'].get('goal_hold_steps', 1)
         pool.goal = np.asarray(settings['task']['goal'], dtype=np.float32)
+        # Runs saved before heading targets existed steer by the bearing to the goal, with no heading condition.
+        pool.heading_mode = settings['policy'].get('heading_mode', 'bearing')
+        if pool.heading_mode == 'target':
+            pool.goal_heading = math.radians(settings['task']['goal_heading_deg'])
+            pool.goal_heading_tolerance_rad = math.radians(settings['task']['goal_heading_tolerance_deg'])
+            pool.heading_distance_scale_m = settings['task']['heading_distance_scale_m']
+            pool.random_goal_headings = settings['sim']['random_goal_headings']
         pool._seed(seed)
         time.sleep(settings['sim']['startup_wait_s'])
         return env

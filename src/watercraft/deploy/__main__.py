@@ -38,6 +38,12 @@ DRY_RUN = not _SETTINGS["arm"]
 CONTROLLER = _SETTINGS['controller']
 POLICY_WEIGHTS = config_path(_SETTINGS["policy_weights"])
 TARGET_XY_M = tuple(_SETTINGS["goal"])
+# Goal heading in degrees, counterclockwise from origin +X (ID0 -> ID1). Used by policies trained with
+# policy.heading_mode = 'target'; 'bearing' policies (older runs) and the P controller ignore it.
+GOAL_HEADING_DEG = _SETTINGS.get("goal_heading_deg")
+# Set from the run's saved config.json by use_trained_policy_settings().
+HEADING_MODE = 'bearing'
+GOAL_HEADING_TOL_DEG = 180.0
 STOP_DISTANCE_M = _SETTINGS["goal_radius_m"]
 HEADING_TOL_DEG = _SETTINGS['heading_tolerance_deg']
 FORWARD_CMD = _SETTINGS['forward_command']
@@ -62,7 +68,8 @@ CALIB_FILE = str(config_path(_SETTINGS["calibration_file"]))
 REAL_LOG_FIELDS = ['time_s', 'dt_s', 'mode', 'x_m', 'y_m', 'yaw_deg', 'dist_m', 'heading_error_deg',
                    'obs_goal_forward', 'obs_goal_left', 'obs_sin_heading', 'obs_cos_heading',
                    'obs_forward_speed', 'obs_yaw_rate', 'model_left', 'model_right',
-                   'sent_left', 'sent_right', 'esp_left', 'esp_right', 'hold_steps']
+                   'sent_left', 'sent_right', 'esp_left', 'esp_right', 'hold_steps',
+                   'goal_heading_deg', 'goal_heading_error_deg']
 
 
 def open_real_log():
@@ -76,14 +83,15 @@ def open_real_log():
     json_path.write_text(json.dumps(dict(_SETTINGS, position_scale_m=POSITION_SCALE_M,
                                          forward_speed_scale_mps=contract.FORWARD_SPEED_SCALE_MPS,
                                          yaw_rate_scale_radps=contract.YAW_RATE_SCALE_RADPS,
+                                         heading_mode=HEADING_MODE,
                                          dry_run=DRY_RUN), indent=2))
     print('Real-boat log:', csv_path)
     return CsvLog(csv_path, REAL_LOG_FIELDS)
 
 
 def use_trained_policy_settings(weights):
-    """Use the observation scales saved with the run that produced the weights."""
-    global POSITION_SCALE_M
+    """Use the observation scales and heading mode saved with the run that produced the weights."""
+    global POSITION_SCALE_M, HEADING_MODE, GOAL_HEADING_TOL_DEG
     for folder in (Path(weights).parent, Path(weights).parent.parent):
         saved = folder / 'config.json'
         if saved.is_file():
@@ -93,6 +101,9 @@ def use_trained_policy_settings(weights):
                 POSITION_SCALE_M = policy['position_scale_m']
                 contract.FORWARD_SPEED_SCALE_MPS = policy['forward_speed_scale_mps']
                 contract.YAW_RATE_SCALE_RADPS = policy['yaw_rate_scale_radps']
+                HEADING_MODE = policy.get('heading_mode', 'bearing')
+                if HEADING_MODE == 'target':
+                    GOAL_HEADING_TOL_DEG = saved['task']['goal_heading_tolerance_deg']
             else:  # historical runs recorded only the position scale
                 POSITION_SCALE_M = saved.get('position_scale_m', POSITION_SCALE_M)
             return
@@ -138,6 +149,11 @@ class MotorController:
             raise ValueError('Set POLICY_WEIGHTS to a policy .npz for CONTROLLER=policy')
         if CONTROLLER == 'policy':
             use_trained_policy_settings(POLICY_WEIGHTS)
+            if HEADING_MODE == 'target' and (GOAL_HEADING_DEG is None or not np.isfinite(GOAL_HEADING_DEG)):
+                raise ValueError('This policy was trained with a goal heading: set goal_heading_deg '
+                                 'in configs/deploy.json (degrees counterclockwise from +X)')
+        self.goal_heading_rad = (math.radians(GOAL_HEADING_DEG)
+                                 if CONTROLLER == 'policy' and HEADING_MODE == 'target' else None)
         self.policy = NumpyPolicy(POLICY_WEIGHTS) if CONTROLLER == 'policy' else None
         self.previous_pose = None
         self.last_control = float('-inf')
@@ -189,11 +205,18 @@ class MotorController:
             self.previous_pose = (x, y, yaw, now)
             observation = policy_observation(
                 x, y, yaw, vx, vy, yaw_rate, *TARGET_XY_M,
-                position_scale_m=POSITION_SCALE_M)
+                position_scale_m=POSITION_SCALE_M, goal_heading_rad=self.goal_heading_rad)
             left, right, debug = compute_motor_command_to_target(
                 x, y, math.degrees(yaw), TARGET_XY_M)
-            # Steps in a row inside the goal radius, as the sim counts them for task.goal_hold_steps.
-            self.hold_count = self.hold_count + 1 if debug['distance_m'] <= STOP_DISTANCE_M else 0
+            # Steps in a row inside the goal radius (and, for goal-heading policies, within the
+            # heading tolerance), as the sim counts them for task.goal_hold_steps.
+            inside = debug['distance_m'] <= STOP_DISTANCE_M
+            goal_heading_error_deg = ''
+            if self.goal_heading_rad is not None:
+                error = self.goal_heading_rad - yaw
+                goal_heading_error_deg = math.degrees(math.atan2(math.sin(error), math.cos(error)))
+                inside = inside and abs(goal_heading_error_deg) <= GOAL_HEADING_TOL_DEG
+            self.hold_count = self.hold_count + 1 if inside else 0
             if self.policy is not None:
                 # The policy keeps control inside the radius: hold runs (task.goal_hold_steps > 1)
                 # were trained to brake and stay there, which cutting the motors would prevent.
@@ -206,6 +229,8 @@ class MotorController:
                 self.mode = 'p:' + debug['mode']
             row = dict(x_m=float(x), y_m=float(y), yaw_deg=math.degrees(yaw), dist_m=debug['distance_m'],
                        hold_steps=self.hold_count,
+                       goal_heading_deg=GOAL_HEADING_DEG if self.goal_heading_rad is not None else '',
+                       goal_heading_error_deg=goal_heading_error_deg,
                        heading_error_deg=debug['heading_error_deg'],
                        model_left=float(action[0]), model_right=float(action[1]),
                        **dict(zip(REAL_LOG_FIELDS[8:14], map(float, observation))))
@@ -308,7 +333,10 @@ def main():
                    else f'bow {controller.bow_heading_deg:+.0f} deg')
             cv2.putText(vis, f'{controller.mode} | {bow} | ESP L={controller.channels[0]} R={controller.channels[1]}',
                         (10, 345), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
-            cv2.putText(vis, f'Target: {TARGET_XY_M} m', (10, 370),
+            target_text = f'Target: {TARGET_XY_M} m'
+            if controller.goal_heading_rad is not None:
+                target_text += f', heading {GOAL_HEADING_DEG:+.0f} deg (+/-{GOAL_HEADING_TOL_DEG:.0f})'
+            cv2.putText(vis, target_text, (10, 370),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
             cv2.putText(vis, 'Q/Esc: quit | R: recalibrate',
                         (10, vis.shape[0] - 15), cv2.FONT_HERSHEY_SIMPLEX,

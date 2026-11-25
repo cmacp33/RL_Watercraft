@@ -139,6 +139,8 @@ results.
 1. Edit `configs/deploy.json`: camera index, serial port, calibration file, goal,
    motor calibration, and `policy_weights` (a `.npz` from a run folder).
    `controller` is `policy` or `p` (the proportional controller).
+   Policies trained with `policy.heading_mode` `"target"` also need `goal_heading_deg`:
+   the heading to hold at the goal, in degrees counterclockwise from +X (marker 0 -> marker 1).
    On Windows, camera capture uses DirectShow, matching the camera scan; other
    platforms use OpenCV's default backend.
 2. Leave `"arm": false` for a dry run that tracks and displays commands without

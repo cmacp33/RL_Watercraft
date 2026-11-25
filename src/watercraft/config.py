@@ -69,6 +69,21 @@ def validate(settings, operation):
         integer('task', 'goal_hold_steps')
         if settings['task']['goal_hold_steps'] >= settings['task']['max_episode_steps']:
             raise ValueError('task.goal_hold_steps must be smaller than task.max_episode_steps')
+    mode = settings['policy'].get('heading_mode', 'bearing')
+    if mode not in ('bearing', 'target'):
+        raise ValueError("policy.heading_mode must be 'bearing' or 'target'")
+    if mode == 'target':
+        for key in ('goal_heading_tolerance_deg', 'heading_distance_scale_m'):
+            if key not in settings['task']:
+                raise ValueError(f"policy.heading_mode 'target' needs task.{key}")
+            positive('task', key)
+        if settings['task']['goal_heading_tolerance_deg'] > 180:
+            raise ValueError('task.goal_heading_tolerance_deg must be at most 180')
+        heading = settings['task'].get('goal_heading_deg')
+        if isinstance(heading, bool) or not isinstance(heading, (int, float)) or not math.isfinite(heading):
+            raise ValueError("policy.heading_mode 'target' needs a finite task.goal_heading_deg")
+        if not isinstance(settings['sim'].get('random_goal_headings'), bool):
+            raise ValueError("policy.heading_mode 'target' needs sim.random_goal_headings (true or false)")
     for group in ('task',):
         goal = settings[group]['goal']
         if not isinstance(goal, list) or len(goal) != 2 or not all(isinstance(v, (int, float)) and math.isfinite(v) for v in goal):
@@ -128,3 +143,7 @@ def validate(settings, operation):
         hold = settings['evaluate'].get('goal_hold_steps')
         if hold is not None and (not isinstance(hold, int) or isinstance(hold, bool) or hold < 1):
             raise ValueError('evaluate.goal_hold_steps must be null or a positive integer')
+        heading = settings['evaluate'].get('goal_heading_deg')
+        if heading is not None and (isinstance(heading, bool) or not isinstance(heading, (int, float))
+                                    or not math.isfinite(heading)):
+            raise ValueError('evaluate.goal_heading_deg must be null or a finite angle in degrees')

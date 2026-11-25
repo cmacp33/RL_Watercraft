@@ -9,7 +9,8 @@ from watercraft.sim_env import make, close, stop
 from watercraft.policy import load as load_policy
 
 EVAL_FIELDS = ['episode', 'total_reward', 'steps', 'start_dist_m', 'final_dist_m',
-               'min_dist_m', 'reached', 'goal_x_m', 'goal_y_m', 'end_reason', 'action_smoothness']
+               'min_dist_m', 'reached', 'goal_x_m', 'goal_y_m', 'end_reason', 'action_smoothness',
+               'goal_heading_deg', 'final_heading_error_deg']
 # One row per control step (step 0 = right after reset, no action yet).
 #   model_*: the policy's output, in [-1, 1].
 #   motor_*: the command published to the thruster plugin (-1..1 = full reverse..full forward thrust), i.e. the model output
@@ -63,7 +64,10 @@ def evaluate(settings, env, actor, log, step_log=None):
                 final_dist_m=final, min_dist_m=minimum, reached=int(reached),
                 goal_x_m=float(pool.goal[0]), goal_y_m=float(pool.goal[1]),
                 end_reason='goal' if reached else 'timeout',
-                action_smoothness=float(np.mean(changes)) if changes else 0.0)
+                action_smoothness=float(np.mean(changes)) if changes else 0.0,
+                # blank for 'bearing' runs, which have no goal heading
+                goal_heading_deg=(float(np.degrees(pool.goal_heading)) if getattr(pool, 'heading_mode', 'bearing') == 'target' else ''),
+                final_heading_error_deg=(float(info['heading_error_deg']) if getattr(pool, 'heading_mode', 'bearing') == 'target' else ''))
             rows.append(row)
             log.write(**row)
             print(f'Episode {episode}: distance={final:.3f}m, reached={reached}, steps={steps}, '
@@ -114,6 +118,14 @@ def main():
     # null keeps the hold the run was trained with (1 = first touch, for runs saved before it existed).
     if options.get('goal_hold_steps') is not None:
         settings['task']['goal_hold_steps'] = options['goal_hold_steps']
+    if settings['policy'].get('heading_mode', 'bearing') == 'target':
+        # A fixed goal_heading_deg wins; otherwise headings are random exactly when goals are,
+        # and a fixed goal keeps the heading the run was trained with.
+        if options.get('goal_heading_deg') is not None:
+            settings['task']['goal_heading_deg'] = options['goal_heading_deg']
+            settings['sim']['random_goal_headings'] = False
+        else:
+            settings['sim']['random_goal_headings'] = options['random_goals']
     actor = load_policy(checkpoint, settings['policy'])
     csv_path, json_path = evaluation_files(directory, 'sim')
     metadata = dict(settings, checkpoint=str(checkpoint.relative_to(directory)), checkpoint_sha256=checkpoint_hash(checkpoint), status='started')

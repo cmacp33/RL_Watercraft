@@ -1,7 +1,7 @@
 {
   "train": {
     "algorithm": "ppo",
-    "run": "ppo_hold_1119",
+    "run": "ppo_heading_1125",
     "seed": 42,
     "minutes": 360,
     "max_iterations": null,
@@ -30,11 +30,14 @@
       0.45,
       0.15
     ],
+    "goal_heading_deg": 0.0,
     "goal_radius_m": 0.08,
     "goal_hold_steps": 20,
+    "goal_heading_tolerance_deg": 30.0,
+    "heading_distance_scale_m": 0.1,
     "max_episode_steps": 300,
     "distance_weight": 50.0,
-    "heading_weight": 0.5,
+    "heading_weight": 2.0,
     "spin_weight": 0.3,
     "step_penalty": 0.1,
     "goal_bonus": 30.0
@@ -53,6 +56,7 @@
       0.53,
       0.18
     ],
+    "random_goal_headings": true,
     "domain_randomization": true,
     "dr_ranges": {
       "motor_gain": [
@@ -79,6 +83,7 @@
     "observation_size": 6,
     "hidden_size": 128,
     "action_size": 2,
+    "heading_mode": "target",
     "position_scale_m": 0.81,
     "forward_speed_scale_mps": 0.45,
     "yaw_rate_scale_radps": 2.0,

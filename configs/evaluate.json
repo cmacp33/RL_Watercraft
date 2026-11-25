@@ -5,7 +5,11 @@
     "episodes": 20,
     "seed": 0,
     "noise": 0.0,
-    "goal": [0.45,-0.15],
+    "goal": [
+      0.45,
+      -0.15
+    ],
+    "goal_heading_deg": null,
     "random_goals": false,
     "randomize": true,
     "max_episode_steps": 100,

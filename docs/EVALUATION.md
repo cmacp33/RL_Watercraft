@@ -45,6 +45,7 @@ Notes:
 | `randomize` | domain randomisation: motor gain, deadband, delay and observation noise |
 | `max_episode_steps` | the step limit for each episode; `null` keeps the training value |
 | `goal_hold_steps` | steps in a row the boat must stay inside the goal radius to count as reached; `null` keeps the training value (1, first touch, for runs trained before this setting existed) |
+| `goal_heading_deg` | goal heading in degrees for runs trained with `policy.heading_mode` `"target"`; `null` uses random headings when `random_goals` is true, otherwise the training value. Ignored for older runs |
 | `auto_plot` | write the plots when the evaluation finishes |
 
 The network size, observation scales, task and simulator settings always come from the run's own `config.json`, so they match the weights. Only the options above override them.
@@ -57,7 +58,7 @@ The network size, observation scales, task and simulator settings always come fr
    - `noise` is added if it is set.
    - The environment applies the command. With `randomize` on, it first applies the simulated delay, gain and deadband. The command that reaches the thrusters is logged as `motor_left` and `motor_right`.
    - Log the distance to the goal and `action_change` = mean |model output − previous model output|.
-3. The episode ends when the boat has stayed within `goal_radius_m` of the goal for `goal_hold_steps` steps in a row (**reached**) or at `max_episode_steps` (**timeout**). Leaving the radius restarts the count. `steps` therefore includes the hold.
+3. The episode ends when the boat has stayed within `goal_radius_m` of the goal for `goal_hold_steps` steps in a row (**reached**) or at `max_episode_steps` (**timeout**). Leaving the radius restarts the count. `steps` therefore includes the hold. For runs trained with `policy.heading_mode` `"target"`, a step only counts if the boat also faces the goal heading within `task.goal_heading_tolerance_deg`; the per-episode CSV then has `goal_heading_deg` and `final_heading_error_deg`.
 
 ### Output files (`runs/<run>/evaluations/sim/<timestamp>…`)
 

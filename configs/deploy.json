@@ -1,11 +1,11 @@
 {
   "arm": true,
-  "camera_index": 1,
+  "camera_index": 0,
   "camera_resolution": [
     1920,
     1080
   ],
-  "serial_port": "COM5",
+  "serial_port": "/dev/ttyUSB0",
   "baud_rate": 115200,
   "control_period_s": 0.1,
   "calibration_file": "vision_tracking/calibration/camera_calibration.npz",
@@ -20,12 +20,13 @@
   "calibration_frames": 5,
   "axis_length_m": 0.05,
   "print_full_transforms": false,
-  "max_action": 0.4,
+  "max_action": 1.0,
   "goal": [
     -0.25,
-    0.25
+    0
   ],
-  "goal_radius_m": 0.08,
+  "goal_heading_deg": 0.0,
+  "goal_radius_m": 0.05,
   "controller": "policy",
   "policy_weights": "runs/ppo_hold_1119/checkpoints/best.npz",
   "heading_tolerance_deg": 12.0,
@@ -36,9 +37,9 @@
   "motor_calibration": {
     "swap_channels": true,
     "left_gain": 1.0,
-    "right_gain": 1.8,
-    "deadband": 40,
-    "max_command": 90,
+    "right_gain": 1.2,
+    "deadband": 30,
+    "max_command": 75,
     "min_action": 0.05
   }
 }
