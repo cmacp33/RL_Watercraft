@@ -8,6 +8,35 @@ CORNER_IDS = tuple(_REAL['corner_ids'])
 TARGET_ID = _REAL['target_id']
 AXIS_LENGTH_M = _REAL['axis_length_m']
 PRINT_FULL_TRANSFORMS = _REAL['print_full_transforms']
+# The resolution camera_calibration.npz was made at; K is only valid for frames of this size.
+CAMERA_RESOLUTION = tuple(_REAL['camera_resolution'])
+
+
+def open_camera(index, resolution=CAMERA_RESOLUTION):
+    """Open a camera at the calibrated resolution, or raise.
+
+    On Windows OpenCV's default backend (Media Foundation) is slow or fails with many USB
+    cameras, so DirectShow is used there. DirectShow opens at 640x480 unless a size is
+    requested, and needs MJPG to deliver 1080p at a usable frame rate.
+    """
+    import sys
+    capture = cv2.VideoCapture(index, cv2.CAP_DSHOW if sys.platform == 'win32' else cv2.CAP_ANY)
+    if not capture.isOpened():
+        raise RuntimeError(f'Cannot open camera {index}.')
+    width, height = resolution
+    capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+    capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+    ok, frame = capture.read()
+    if not ok:
+        capture.release()
+        raise RuntimeError(f'Cannot read from camera {index}.')
+    if frame.shape[1::-1] != (width, height):
+        capture.release()
+        raise RuntimeError(f'Camera {index} gives {frame.shape[1]}x{frame.shape[0]} frames, but the '
+                           f'calibration is for {width}x{height} (deploy.json camera_resolution). '
+                           'Wrong camera index, or the camera cannot do that resolution.')
+    return capture
 
 
 def marker_object_points(length_m):

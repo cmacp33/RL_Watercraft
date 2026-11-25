@@ -5,11 +5,11 @@ from watercraft.config import load, path
 
 def main():
     import cv2
+    from watercraft.deploy.vision import open_camera
     real, tools = load('deploy'), load('vision_tracking')
-    capture = cv2.VideoCapture(real['camera_index'])
+    capture = open_camera(real['camera_index'])
     try:
-        if not capture.isOpened():
-            raise RuntimeError('Cannot open configured camera')
+        cv2.namedWindow(tools['preview_window'], cv2.WINDOW_NORMAL)
         print('S: save frame; Q/Esc: quit. Motors are not opened.')
         while True:
             ok, frame = capture.read()

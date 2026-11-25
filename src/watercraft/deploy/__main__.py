@@ -24,7 +24,8 @@ from watercraft import contract
 from watercraft.contract import NumpyPolicy, POSITION_SCALE_M, policy_observation
 from watercraft.deploy.motors import send_motor_command, send_policy_action, stop_motors
 from watercraft.deploy.vision import (detect_and_draw_markers, find_origin, rectangle_from_centers,
-                                      locate_aruco_4, draw_origin_axes, display_id4_rotation, print_id4_pose)
+                                      locate_aruco_4, draw_origin_axes, display_id4_rotation, print_id4_pose,
+                                      open_camera)
 
 # Serial and controller settings (no command-line arguments).
 from watercraft.config import load as load_config, path as config_path
@@ -239,9 +240,8 @@ def main():
             send_motor_command(ser, 0, 0)
         print(f'Controller: {CONTROLLER}; target: {TARGET_XY_M} m; '
               f'{"DRY RUN" if DRY_RUN else SERIAL_PORT}')
-        capture = cv2.VideoCapture(CAM_INDEX)
-        if not capture.isOpened():
-            raise RuntimeError('Cannot open camera.')
+        capture = open_camera(CAM_INDEX)
+        cv2.namedWindow('ArUco measured rectangle', cv2.WINDOW_NORMAL)  # 1080p is larger than most laptop screens
         print('Keep all four corner markers visible and still. R recalibrates; Q or Esc quits.')
         while True:
             ok, frame = capture.read()
