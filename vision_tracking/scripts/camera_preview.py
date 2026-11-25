@@ -1,12 +1,14 @@
 """Preview and capture frames; settings: configs/deploy.json and vision_tracking/config.json."""
 from datetime import datetime
+import sys
 from watercraft.config import load, path
 
 
 def main():
     import cv2
     real, tools = load('deploy'), load('vision_tracking')
-    capture = cv2.VideoCapture(real['camera_index'])
+    backend = cv2.CAP_DSHOW if sys.platform == 'win32' else cv2.CAP_ANY
+    capture = cv2.VideoCapture(real['camera_index'], backend)
     try:
         if not capture.isOpened():
             raise RuntimeError('Cannot open configured camera')

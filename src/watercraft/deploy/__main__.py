@@ -14,6 +14,7 @@ calibration; press R to recalibrate if either moves. Press Q or Esc to quit.
 """
 import json
 import math
+import sys
 import time
 from pathlib import Path
 import cv2
@@ -239,12 +240,14 @@ def main():
             send_motor_command(ser, 0, 0)
         print(f'Controller: {CONTROLLER}; target: {TARGET_XY_M} m; '
               f'{"DRY RUN" if DRY_RUN else SERIAL_PORT}')
-        capture = cv2.VideoCapture(CAM_INDEX)
+        backend = cv2.CAP_DSHOW if sys.platform == 'win32' else cv2.CAP_ANY
+        capture = cv2.VideoCapture(CAM_INDEX, backend)
         if not capture.isOpened():
             raise RuntimeError('Cannot open camera.')
         print('Keep all four corner markers visible and still. R recalibrates; Q or Esc quits.')
         while True:
             ok, frame = capture.read()
+            print(frame.shape)
             if not ok:
                 raise RuntimeError('Cannot read camera frame.')
             # Keep the same K after undistortion; all subsequent poses use D=0.

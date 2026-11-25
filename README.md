@@ -139,6 +139,8 @@ results.
 1. Edit `configs/deploy.json`: camera index, serial port, calibration file, goal,
    motor calibration, and `policy_weights` (a `.npz` from a run folder).
    `controller` is `policy` or `p` (the proportional controller).
+   On Windows, camera capture uses DirectShow, matching the camera scan; other
+   platforms use OpenCV's default backend.
 2. Leave `"arm": false` for a dry run that tracks and displays commands without
    opening the serial port. Set it to `true` to drive the motors.
 3. Run `python -m watercraft.deploy`. Keep all four corner markers visible; `R`

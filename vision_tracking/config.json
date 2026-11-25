@@ -1,5 +1,5 @@
 {
-  "camera_scan_count": 10,
+  "camera_scan_count": 2,
   "capture_directory": "vision_tracking/calibration/images",
   "marker_directory": "vision_tracking/markers",
   "marker_ids": [

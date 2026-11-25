@@ -1,7 +1,7 @@
 {
   "arm": false,
-  "camera_index": 0,
-  "serial_port": "/dev/cu.usbserial-110",
+  "camera_index": 1,
+  "serial_port": "COM5",
   "baud_rate": 115200,
   "control_period_s": 0.1,
   "calibration_file": "vision_tracking/calibration/camera_calibration.npz",

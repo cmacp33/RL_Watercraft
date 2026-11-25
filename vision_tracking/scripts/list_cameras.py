@@ -4,7 +4,7 @@ from watercraft.config import load
 def main():
     import cv2
     for index in range(load('vision_tracking')['camera_scan_count']):
-        capture = cv2.VideoCapture(index)
+        capture = cv2.VideoCapture(index, cv2.CAP_DSHOW)
         try:
             if capture.isOpened():
                 print('Camera', index)
