@@ -1,6 +1,10 @@
 {
   "arm": false,
   "camera_index": 1,
+  "camera_resolution": [
+    1920,
+    1080
+  ],
   "serial_port": "COM5",
   "baud_rate": 115200,
   "control_period_s": 0.1,

@@ -14,7 +14,6 @@ calibration; press R to recalibrate if either moves. Press Q or Esc to quit.
 """
 import json
 import math
-import sys
 import time
 from pathlib import Path
 import cv2
@@ -25,7 +24,8 @@ from watercraft import contract
 from watercraft.contract import NumpyPolicy, POSITION_SCALE_M, policy_observation
 from watercraft.deploy.motors import send_motor_command, send_policy_action, stop_motors
 from watercraft.deploy.vision import (detect_and_draw_markers, find_origin, rectangle_from_centers,
-                                      locate_aruco_4, draw_origin_axes, display_id4_rotation, print_id4_pose)
+                                      locate_aruco_4, draw_origin_axes, display_id4_rotation, print_id4_pose,
+                                      open_camera)
 
 # Serial and controller settings (no command-line arguments).
 from watercraft.config import load as load_config, path as config_path
@@ -240,16 +240,13 @@ def main():
             send_motor_command(ser, 0, 0)
         print(f'Controller: {CONTROLLER}; target: {TARGET_XY_M} m; '
               f'{"DRY RUN" if DRY_RUN else SERIAL_PORT}')
-        backend = cv2.CAP_DSHOW if sys.platform == 'win32' else cv2.CAP_ANY
-        capture = cv2.VideoCapture(CAM_INDEX, backend)
-        if not capture.isOpened():
-            raise RuntimeError('Cannot open camera.')
+        capture = open_camera(CAM_INDEX)
         print('Keep all four corner markers visible and still. R recalibrates; Q or Esc quits.')
         while True:
             ok, frame = capture.read()
-            print(frame.shape)
             if not ok:
                 raise RuntimeError('Cannot read camera frame.')
+            print(frame.shape)
             # Keep the same K after undistortion; all subsequent poses use D=0.
             undistorted = cv2.undistort(frame, K, D)
             vis, found = detect_and_draw_markers(undistorted, detector)

@@ -1,17 +1,15 @@
 """Preview and capture frames; settings: configs/deploy.json and vision_tracking/config.json."""
 from datetime import datetime
-import sys
 from watercraft.config import load, path
 
 
 def main():
     import cv2
+    from watercraft.deploy.vision import open_camera
     real, tools = load('deploy'), load('vision_tracking')
-    backend = cv2.CAP_DSHOW if sys.platform == 'win32' else cv2.CAP_ANY
-    capture = cv2.VideoCapture(real['camera_index'], backend)
+    capture = open_camera(real['camera_index'])
     try:
-        if not capture.isOpened():
-            raise RuntimeError('Cannot open configured camera')
+        cv2.namedWindow(tools['preview_window'], cv2.WINDOW_NORMAL)
         print('S: save frame; Q/Esc: quit. Motors are not opened.')
         while True:
             ok, frame = capture.read()
@@ -20,6 +18,8 @@ def main():
             cv2.imshow(tools['preview_window'], frame)
             key = cv2.waitKey(1) & 255
             if key in (ord('q'), 27):
+                break
+            if cv2.getWindowProperty(tools['preview_window'], cv2.WND_PROP_VISIBLE) < 1:
                 break
             if key == ord('s'):
                 directory = path(tools['capture_directory'])
