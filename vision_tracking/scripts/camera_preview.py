@@ -5,17 +5,16 @@ from watercraft.config import load, path
 
 def main():
     import cv2
-    from watercraft.deploy.vision import open_camera
+    from watercraft.deploy.vision import open_camera, fit_for_display
     real, tools = load('deploy'), load('vision_tracking')
     capture = open_camera(real['camera_index'])
     try:
-        cv2.namedWindow(tools['preview_window'], cv2.WINDOW_NORMAL)
         print('S: save frame; Q/Esc: quit. Motors are not opened.')
         while True:
             ok, frame = capture.read()
             if not ok:
                 raise RuntimeError('Cannot read camera')
-            cv2.imshow(tools['preview_window'], frame)
+            cv2.imshow(tools['preview_window'], fit_for_display(frame))  # S still saves the full frame
             key = cv2.waitKey(1) & 255
             if key in (ord('q'), 27):
                 break

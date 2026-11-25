@@ -39,6 +39,16 @@ def open_camera(index, resolution=CAMERA_RESOLUTION):
     return capture
 
 
+def fit_for_display(image, max_width=1280):
+    """A shrunken copy for cv2.imshow only; detection and pose always use the full frame.
+
+    OpenCV windows ignore Windows display scaling, so at 150-200 % a 1080p frame is drawn
+    larger than the screen and only part of it is visible.
+    """
+    scale = max_width / image.shape[1]
+    return image if scale >= 1 else cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+
+
 def marker_object_points(length_m):
     half = length_m / 2.0
     # Required order for SOLVEPNP_IPPE_SQUARE.

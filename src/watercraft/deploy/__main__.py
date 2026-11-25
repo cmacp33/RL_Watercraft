@@ -25,7 +25,7 @@ from watercraft.contract import NumpyPolicy, POSITION_SCALE_M, policy_observatio
 from watercraft.deploy.motors import send_motor_command, send_policy_action, stop_motors
 from watercraft.deploy.vision import (detect_and_draw_markers, find_origin, rectangle_from_centers,
                                       locate_aruco_4, draw_origin_axes, display_id4_rotation, print_id4_pose,
-                                      open_camera)
+                                      open_camera, fit_for_display)
 
 # Serial and controller settings (no command-line arguments).
 from watercraft.config import load as load_config, path as config_path
@@ -313,7 +313,7 @@ def main():
             cv2.putText(vis, 'Q/Esc: quit | R: recalibrate',
                         (10, vis.shape[0] - 15), cv2.FONT_HERSHEY_SIMPLEX,
                         0.6, (255, 255, 255), 2)
-            cv2.imshow('ArUco measured rectangle', vis)
+            cv2.imshow('ArUco measured rectangle', fit_for_display(vis))
             key = cv2.waitKey(1) & 0xFF
             if key in (27, ord('q'), ord('Q')):
                 break
