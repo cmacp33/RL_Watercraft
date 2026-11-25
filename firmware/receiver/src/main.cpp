@@ -61,7 +61,7 @@ const unsigned long REVERSE_NEUTRAL_MS = 50;
 // moving. Starting commands below START_KICK_SPEED run at START_KICK_SPEED for
 // START_KICK_MS first. Any command between -MIN_RUN_SPEED and +MIN_RUN_SPEED is a stop.
 const int START_KICK_SPEED = 50;
-const int MIN_RUN_SPEED = 30;
+const int MIN_RUN_SPEED = 30;  // TEMP for testing: cutoff disabled (was 30) - restore after testing
 const unsigned long START_KICK_MS = 150;
 
 // Requested speeds from the latest command (written from ESP-NOW callback)
